@@ -1,5 +1,5 @@
 -- Загрузка вашей библиотеки
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/teppyboy/RbxScripts/master/Misc/UI_Libraries/Zypher/Library.lua"))()
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/library"))()
 
 -- Создание главного окна
 local window = Library:CreateMain({
