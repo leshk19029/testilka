@@ -14,3 +14,205 @@ end)
 local slider = library:CreateSlider(mainTab, "Test Slider", 0, 100, 50, function(value)
     print("Slider:", value)
 end)
+
+-- Создаем кружок, который можно двигать и кликать
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+-- Функция для создания кружка
+local function createMovableCircle()
+    local circle = Instance.new("Frame")
+    circle.Name = "MovableCircle"
+    circle.Size = UDim2.new(0, 60, 0, 60)
+    circle.Position = UDim2.new(0, 100, 0, 100)
+    circle.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+    circle.BorderSizePixel = 0
+    circle.BackgroundTransparency = 0.3
+    circle.Active = true
+    circle.Selectable = true
+    circle.ZIndex = 1000
+    circle.Parent = library.ScreenGui
+    
+    -- Делаем кружок круглым
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(1, 0)
+    corner.Parent = circle
+    
+    -- Текст внутри кружка
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Name = "CircleText"
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.Text = "Drag Me\nClick Me"
+    textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    textLabel.TextSize = 12
+    textLabel.Font = Enum.Font.Gotham
+    textLabel.TextWrapped = true
+    textLabel.ZIndex = 1001
+    textLabel.Parent = circle
+    
+    -- Переменные для перемещения
+    local isDragging = false
+    local dragStart = nil
+    local startPos = nil
+    local clickCooldown = false
+    
+    -- Функция для обработки кликов
+    local function handleClick()
+        if clickCooldown then return end
+        
+        clickCooldown = true
+        circle.BackgroundTransparency = 0.1
+        
+        -- Анимация клика
+        local originalSize = circle.Size
+        circle.Size = UDim2.new(0, 50, 0, 50)
+        
+        -- Изменяем цвет при клике
+        circle.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+        textLabel.Text = "Clicked!"
+        
+        print("Circle clicked!")
+        
+        -- Возвращаем к исходному состоянию через 0.5 секунды
+        task.delay(0.5, function()
+            circle.Size = originalSize
+            circle.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+            circle.BackgroundTransparency = 0.3
+            textLabel.Text = "Drag Me\nClick Me"
+            clickCooldown = false
+        end)
+    end
+    
+    -- Обработка ввода для ПК
+    circle.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            isDragging = true
+            dragStart = input.Position
+            startPos = circle.Position
+            
+            -- Поднимаем кружок на верхний слой при начале перетаскивания
+            circle.ZIndex = 1002
+            
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    isDragging = false
+                    circle.ZIndex = 1000
+                    
+                    -- Проверяем, был ли это клик (малое перемещение)
+                    if dragStart and (input.Position - dragStart).Magnitude < 10 then
+                        handleClick()
+                    end
+                end
+            end)
+        end
+    end)
+    
+    -- Обработка ввода для мобильных устройств
+    circle.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch then
+            isDragging = true
+            dragStart = input.Position
+            startPos = circle.Position
+            
+            circle.ZIndex = 1002
+            
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    isDragging = false
+                    circle.ZIndex = 1000
+                    
+                    -- Проверяем, был ли это тап (малое перемещение)
+                    if dragStart and (input.Position - dragStart).Magnitude < 15 then
+                        handleClick()
+                    end
+                end
+            end)
+        end
+    end)
+    
+    -- Обработка перемещения для ПК
+    circle.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement and isDragging then
+            local delta = input.Position - dragStart
+            circle.Position = UDim2.new(
+                startPos.X.Scale, 
+                startPos.X.Offset + delta.X,
+                startPos.Y.Scale, 
+                startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+    
+    -- Обработка перемещения для мобильных устройств
+    circle.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch and isDragging then
+            local delta = input.Position - dragStart
+            circle.Position = UDim2.new(
+                startPos.X.Scale, 
+                startPos.X.Offset + delta.X,
+                startPos.Y.Scale, 
+                startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+    
+    -- Ограничиваем кружок в пределах экрана
+    local function keepInBounds()
+        if not circle then return end
+        
+        local screenSize = workspace.CurrentCamera.ViewportSize
+        local circleSize = circle.AbsoluteSize
+        local position = circle.Position
+        
+        local minX = 0
+        local maxX = screenSize.X - circleSize.X
+        local minY = 0
+        local maxY = screenSize.Y - circleSize.Y
+        
+        local newX = math.clamp(position.X.Offset, minX, maxX)
+        local newY = math.clamp(position.Y.Offset, minY, maxY)
+        
+        if newX ~= position.X.Offset or newY ~= position.Y.Offset then
+            circle.Position = UDim2.new(position.X.Scale, newX, position.Y.Scale, newY)
+        end
+    end
+    
+    -- Постоянно проверяем границы
+    RunService.Heartbeat:Connect(keepInBounds)
+    
+    -- Кнопка для скрытия/показа кружка в меню
+    library:CreateButton(mainTab, "Toggle Circle", function()
+        circle.Visible = not circle.Visible
+    end)
+    
+    -- Кнопка для изменения цвета кружка
+    library:CreateButton(mainTab, "Change Circle Color", function()
+        local colors = {
+            Color3.fromRGB(255, 0, 0),
+            Color3.fromRGB(0, 255, 0),
+            Color3.fromRGB(0, 0, 255),
+            Color3.fromRGB(255, 255, 0),
+            Color3.fromRGB(255, 0, 255),
+            Color3.fromRGB(0, 255, 255)
+        }
+        circle.BackgroundColor3 = colors[math.random(1, #colors)]
+    end)
+    
+    -- Слайдер для изменения размера кружка
+    library:CreateSlider(mainTab, "Circle Size", 30, 100, 60, function(value)
+        circle.Size = UDim2.new(0, value, 0, value)
+    end)
+    
+    -- Слайдер для изменения прозрачности кружка
+    library:CreateSlider(mainTab, "Circle Transparency", 0, 100, 30, function(value)
+        circle.BackgroundTransparency = value / 100
+    end)
+    
+    return circle
+end
+
+-- Создаем кружок
+local movableCircle = createMovableCircle()
+
+print("Movable circle created! Drag it around and click/tap on it!")
