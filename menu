@@ -1,462 +1,357 @@
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
 
--- Основные цвета
+-- Цвета как в Fatality
 local Colors = {
-    Background = Color3.fromRGB(40, 40, 40),
-    Secondary = Color3.fromRGB(30, 30, 30),
-    Accent = Color3.fromRGB(25, 25, 25),
+    Black = Color3.fromRGB(16, 16, 16),
+    Main = Color3.fromRGB(255, 106, 133),
+    Background = Color3.fromRGB(19, 19, 19),
+    Secondary = Color3.fromRGB(24, 24, 24),
+    Border = Color3.fromRGB(29, 29, 29),
     Text = Color3.fromRGB(255, 255, 255),
-    Button = Color3.fromRGB(60, 60, 60),
-    ButtonHover = Color3.fromRGB(70, 70, 70),
-    ToggleOn = Color3.fromRGB(0, 170, 255),
-    ToggleOff = Color3.fromRGB(80, 80, 80),
-    Border = Color3.fromRGB(60, 60, 60),
-    SliderTrack = Color3.fromRGB(50, 50, 50),
-    SliderFill = Color3.fromRGB(0, 120, 255)
+    Risky = Color3.fromRGB(255, 160, 92)
 }
 
--- Функция перетаскивания
-local function MakeDraggable(frame, handle)
-    handle = handle or frame
+-- Шрифт как в Fatality
+local FontSemiBold = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
+
+-- Функция для создания анимаций
+local function CreateAnimation(Instance, Time, Style, Property)
+    if typeof(Style) == 'table' then
+        Property = Style
+        Style = nil
+    end
     
-    local dragging = false
-    local dragInput, dragStart, startPos
-
-    handle.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStart = input.Position
-            startPos = frame.Position
-            
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                end
-            end)
-        end
-    end)
-
-    handle.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-            dragInput = input
-        end
-    end)
-
-    UserInputService.InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
-            local delta = input.Position - dragStart
-            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-        end
-    end)
+    local Tween = TweenService:Create(Instance, TweenInfo.new(Time or 1, Style or Enum.EasingStyle.Quint), Property)
+    Tween:Play()
+    return Tween
 end
 
--- Создание основного меню
-local function CreateMenu()
-    -- Основной GUI
-    local ScreenGui = Instance.new("ScreenGui")
-    ScreenGui.Name = "FatalityMenu"
-    ScreenGui.Parent = game:GetService("CoreGui")
-    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+-- Функция для создания Toggle (точная копия из Fatality)
+local function CreateToggle(Parent, Config)
+    Config = Config or {}
+    Config.Name = Config.Name or "Toggle"
+    Config.Default = Config.Default or false
+    Config.Risky = Config.Risky or false
+    Config.Callback = Config.Callback or function(bool) end
 
-    -- Главное окно
-    local MainFrame = Instance.new("Frame")
-    MainFrame.Name = "MainFrame"
-    MainFrame.Size = UDim2.new(0, 400, 0, 450)
-    MainFrame.Position = UDim2.new(0.5, -200, 0.5, -225)
-    MainFrame.BackgroundColor3 = Colors.Background
-    MainFrame.BorderColor3 = Colors.Border
-    MainFrame.BorderSizePixel = 1
-    MainFrame.ClipsDescendants = true
-    MainFrame.Parent = ScreenGui
+    local Toggle = Instance.new("Frame")
+    local Toggle_Name = Instance.new("TextLabel")
+    local ValueFrame = Instance.new("Frame")
+    local UICorner = Instance.new("UICorner")
+    local ValueIcon = Instance.new("ImageLabel")
 
-    -- Заголовок
-    local TitleBar = Instance.new("Frame")
-    TitleBar.Name = "TitleBar"
-    TitleBar.Size = UDim2.new(1, 0, 0, 30)
-    TitleBar.BackgroundColor3 = Colors.Secondary
-    TitleBar.BorderSizePixel = 0
-    TitleBar.Parent = MainFrame
+    Toggle.Name = "Toggle"
+    Toggle.Parent = Parent
+    Toggle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    Toggle.BackgroundTransparency = 1.000
+    Toggle.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    Toggle.BorderSizePixel = 0
+    Toggle.Size = UDim2.new(1, -25, 0, 17)
+    Toggle.ZIndex = 2
 
-    local TitleText = Instance.new("TextLabel")
-    TitleText.Name = "TitleText"
-    TitleText.Size = UDim2.new(1, -60, 1, 0)
-    TitleText.Position = UDim2.new(0, 10, 0, 0)
-    TitleText.BackgroundTransparency = 1
-    TitleText.Text = "Fatality Menu"
-    TitleText.TextColor3 = Colors.Text
-    TitleText.TextXAlignment = Enum.TextXAlignment.Left
-    TitleText.Font = Enum.Font.Gotham
-    TitleText.TextSize = 14
-    TitleText.Parent = TitleBar
+    Toggle_Name.Name = "Toggle_Name"
+    Toggle_Name.Parent = Toggle
+    Toggle_Name.AnchorPoint = Vector2.new(0, 0.5)
+    Toggle_Name.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    Toggle_Name.BackgroundTransparency = 1.000
+    Toggle_Name.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    Toggle_Name.BorderSizePixel = 0
+    Toggle_Name.Position = UDim2.new(0, 0, 0.5, 0)
+    Toggle_Name.Size = UDim2.new(1, 0, 0.800000012, 0)
+    Toggle_Name.ZIndex = 3
+    Toggle_Name.FontFace = FontSemiBold
+    Toggle_Name.Text = Config.Name
+    Toggle_Name.TextColor3 = (Config.Risky and Colors.Risky) or Colors.Text
+    Toggle_Name.TextSize = 13.000
+    Toggle_Name.TextTransparency = 0.200
+    Toggle_Name.TextXAlignment = Enum.TextXAlignment.Left
 
-    local CloseButton = Instance.new("TextButton")
-    CloseButton.Name = "CloseButton"
-    CloseButton.Size = UDim2.new(0, 30, 0, 30)
-    CloseButton.Position = UDim2.new(1, -30, 0, 0)
-    CloseButton.BackgroundTransparency = 1
-    CloseButton.Text = "X"
-    CloseButton.TextColor3 = Colors.Text
-    CloseButton.Font = Enum.Font.Gotham
-    CloseButton.TextSize = 14
-    CloseButton.Parent = TitleBar
+    ValueFrame.Name = "ValueFrame"
+    ValueFrame.Parent = Toggle
+    ValueFrame.AnchorPoint = Vector2.new(1, 0.5)
+    ValueFrame.BackgroundColor3 = Colors.Black
+    ValueFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    ValueFrame.BorderSizePixel = 0
+    ValueFrame.Position = UDim2.new(1, -3, 0.5, 0)
+    ValueFrame.Size = UDim2.new(0.899999976, 0, 0.899999976, 0)
+    ValueFrame.SizeConstraint = Enum.SizeConstraint.RelativeYY
+    ValueFrame.ZIndex = 3
 
-    CloseButton.MouseButton1Click:Connect(function()
-        ScreenGui:Destroy()
+    UICorner.CornerRadius = UDim.new(0, 2)
+    UICorner.Parent = ValueFrame
+
+    ValueIcon.Name = "ValueIcon"
+    ValueIcon.Parent = ValueFrame
+    ValueIcon.AnchorPoint = Vector2.new(0.5, 0.5)
+    ValueIcon.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    ValueIcon.BackgroundTransparency = 1.000
+    ValueIcon.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    ValueIcon.BorderSizePixel = 0
+    ValueIcon.Position = UDim2.new(0.5, 0, 0.5, 0)
+    ValueIcon.Size = UDim2.new(0.699999988, 0, 0.699999988, 0)
+    ValueIcon.ZIndex = 3
+    ValueIcon.Image = "rbxassetid://10709790644" -- Check icon
+
+    local function toggleImg(value)
+        if value then
+            CreateAnimation(ValueIcon, 0.45, {
+                ImageTransparency = 0,
+                ImageColor3 = Colors.Main,
+                Size = UDim2.new(0.8, 0, 0.8, 0),
+                Rotation = 0,
+            })
+        else
+            CreateAnimation(ValueIcon, 0.45, {
+                ImageTransparency = 1,
+                ImageColor3 = Colors.Text,
+                Size = UDim2.new(0.699999988, 0, 0.699999988, 0),
+                Rotation = 15
+            })
+        end
+    end
+
+    -- Инициализация состояния
+    toggleImg(Config.Default)
+
+    -- Эффекты при наведении
+    ValueFrame.MouseEnter:Connect(function()
+        if not Config.Default then
+            CreateAnimation(ValueIcon, 0.45, {
+                ImageTransparency = 0.5,
+                ImageColor3 = Colors.Text,
+                Size = UDim2.new(0.7, 0, 0.7, 0),
+                Rotation = 0
+            })
+        end
     end)
 
-    -- Делаем окно перетаскиваемым
-    MakeDraggable(MainFrame, TitleBar)
+    ValueFrame.MouseLeave:Connect(function()
+        if not Config.Default then
+            CreateAnimation(ValueIcon, 0.45, {
+                ImageTransparency = 1,
+                ImageColor3 = Colors.Text,
+                Size = UDim2.new(0.699999988, 0, 0.699999988, 0),
+                Rotation = 15
+            })
+        end
+    end)
 
-    -- Контейнер для вкладок
-    local TabContainer = Instance.new("Frame")
-    TabContainer.Name = "TabContainer"
-    TabContainer.Size = UDim2.new(1, -20, 0, 30)
-    TabContainer.Position = UDim2.new(0, 10, 0, 40)
-    TabContainer.BackgroundTransparency = 1
-    TabContainer.Parent = MainFrame
+    -- Обработчик клика
+    local Button = Instance.new("TextButton")
+    Button.Name = "InputButton"
+    Button.Parent = ValueFrame
+    Button.BackgroundTransparency = 1
+    Button.TextTransparency = 1
+    Button.Size = UDim2.new(1, 0, 1, 0)
+    Button.ZIndex = 4
 
-    local TabLayout = Instance.new("UIListLayout")
-    TabLayout.FillDirection = Enum.FillDirection.Horizontal
-    TabLayout.Padding = UDim.new(0, 5)
-    TabLayout.Parent = TabContainer
+    Button.MouseButton1Click:Connect(function()
+        Config.Default = not Config.Default
+        toggleImg(Config.Default)
+        Config.Callback(Config.Default)
+    end)
 
-    -- Контейнер для контента
-    local ContentContainer = Instance.new("ScrollingFrame")
-    ContentContainer.Name = "ContentContainer"
-    ContentContainer.Size = UDim2.new(1, -20, 1, -80)
-    ContentContainer.Position = UDim2.new(0, 10, 0, 80)
-    ContentContainer.BackgroundTransparency = 1
-    ContentContainer.BorderSizePixel = 0
-    ContentContainer.ScrollBarThickness = 5
-    ContentContainer.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    ContentContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
-    ContentContainer.Parent = MainFrame
-
-    local ContentLayout = Instance.new("UIListLayout")
-    ContentLayout.Padding = UDim.new(0, 10)
-    ContentLayout.Parent = ContentContainer
-
-    -- Создаем вкладки
-    local Tabs = {}
-    local CurrentTab = nil
-
-    local function CreateTab(name)
-        local TabButton = Instance.new("TextButton")
-        TabButton.Name = name .. "Tab"
-        TabButton.Size = UDim2.new(0, 80, 1, 0)
-        TabButton.BackgroundColor3 = Colors.Button
-        TabButton.BorderColor3 = Colors.Border
-        TabButton.BorderSizePixel = 1
-        TabButton.Text = name
-        TabButton.TextColor3 = Colors.Text
-        TabButton.Font = Enum.Font.Gotham
-        TabButton.TextSize = 12
-        TabButton.Parent = TabContainer
-
-        local TabContent = Instance.new("Frame")
-        TabContent.Name = name .. "Content"
-        TabContent.Size = UDim2.new(1, 0, 1, 0)
-        TabContent.BackgroundTransparency = 1
-        TabContent.Visible = false
-        TabContent.Parent = ContentContainer
-
-        local TabLayout = Instance.new("UIListLayout")
-        TabLayout.Padding = UDim.new(0, 10)
-        TabLayout.Parent = TabContent
-
-        TabButton.MouseButton1Click:Connect(function()
-            if CurrentTab then
-                CurrentTab.Content.Visible = false
+    return {
+        SetValue = function(value)
+            local IsSame = value == Config.Default
+            Config.Default = value
+            toggleImg(Config.Default)
+            if not IsSame then
+                Config.Callback(Config.Default)
             end
-            TabContent.Visible = true
-            CurrentTab = {Content = TabContent}
-        end)
+        end,
+        GetValue = function()
+            return Config.Default
+        end
+    }
+end
 
-        table.insert(Tabs, {
-            Button = TabButton,
-            Content = TabContent
+-- Функция для создания Slider (точная копия из Fatality)
+local function CreateSlider(Parent, Config)
+    Config = Config or {}
+    Config.Name = Config.Name or "Slider"
+    Config.Type = Config.Type or ""
+    Config.Default = Config.Default or 50
+    Config.Min = Config.Min or 0
+    Config.Max = Config.Max or 100
+    Config.Round = Config.Round or 0
+    Config.Risky = Config.Risky or false
+    Config.Callback = Config.Callback or function(number) end
+
+    local Slider = Instance.new("Frame")
+    local Slider_Name = Instance.new("TextLabel")
+    local ValueFrame = Instance.new("Frame")
+    local UICorner = Instance.new("UICorner")
+    local boxli = Instance.new("Frame")
+    local UICorner_2 = Instance.new("UICorner")
+    local ValueText = Instance.new("TextLabel")
+
+    Slider.Name = "Slider"
+    Slider.Parent = Parent
+    Slider.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    Slider.BackgroundTransparency = 1.000
+    Slider.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    Slider.BorderSizePixel = 0
+    Slider.Size = UDim2.new(1, -25, 0, 17)
+    Slider.ZIndex = 2
+
+    Slider_Name.Name = "Slider_Name"
+    Slider_Name.Parent = Slider
+    Slider_Name.AnchorPoint = Vector2.new(0, 0.5)
+    Slider_Name.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    Slider_Name.BackgroundTransparency = 1.000
+    Slider_Name.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    Slider_Name.BorderSizePixel = 0
+    Slider_Name.Position = UDim2.new(0, 0, 0.5, 0)
+    Slider_Name.Size = UDim2.new(1, 0, 0.800000012, 0)
+    Slider_Name.ZIndex = 3
+    Slider_Name.FontFace = FontSemiBold
+    Slider_Name.Text = Config.Name
+    Slider_Name.TextColor3 = (Config.Risky and Colors.Risky) or Colors.Text
+    Slider_Name.TextSize = 13.000
+    Slider_Name.TextTransparency = 0.200
+    Slider_Name.TextXAlignment = Enum.TextXAlignment.Left
+
+    ValueFrame.Name = "ValueFrame"
+    ValueFrame.Parent = Slider
+    ValueFrame.AnchorPoint = Vector2.new(1, 0.5)
+    ValueFrame.BackgroundColor3 = Colors.Black
+    ValueFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    ValueFrame.BorderSizePixel = 0
+    ValueFrame.Position = UDim2.new(1, -3, 0.5, 0)
+    ValueFrame.Size = UDim2.new(0, 85, 0.600000024, 0)
+    ValueFrame.ZIndex = 3
+
+    UICorner.CornerRadius = UDim.new(0, 2)
+    UICorner.Parent = ValueFrame
+
+    boxli.Name = "boxli"
+    boxli.Parent = ValueFrame
+    boxli.BackgroundColor3 = Colors.Main
+    boxli.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    boxli.BorderSizePixel = 0
+    boxli.Size = UDim2.new((Config.Default - Config.Min) / (Config.Max - Config.Min), 0, 1, 0)
+    boxli.ZIndex = 4
+
+    UICorner_2.CornerRadius = UDim.new(0, 2)
+    UICorner_2.Parent = boxli
+
+    ValueText.Name = "ValueText"
+    ValueText.Parent = ValueFrame
+    ValueText.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    ValueText.BackgroundTransparency = 1.000
+    ValueText.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    ValueText.BorderSizePixel = 0
+    ValueText.Size = UDim2.new(1, 0, 1, 0)
+    ValueText.ZIndex = 5
+    ValueText.FontFace = FontSemiBold
+    ValueText.Text = string.format('%s%s', tostring(Config.Default), tostring(Config.Type))
+    ValueText.TextColor3 = Colors.Text
+    ValueText.TextSize = 9.000
+    ValueText.TextStrokeTransparency = 0.850
+
+    local IsHold = false
+
+    local function update(Input)
+        local SizeScale = math.clamp((Input.Position.X - ValueFrame.AbsolutePosition.X) / ValueFrame.AbsoluteSize.X, 0, 1)
+        local Main = ((Config.Max - Config.Min) * SizeScale) + Config.Min
+        local Value = math.floor(Main * (10 ^ Config.Round)) / (10 ^ Config.Round)
+        local normalized = (Value - Config.Min) / (Config.Max - Config.Min)
+
+        CreateAnimation(boxli, 0.2, {
+            Size = UDim2.new(normalized, 0, 1, 0)
         })
 
-        return TabContent
+        Config.Default = Value
+        ValueText.Text = string.format('%s%s', tostring(Config.Default), tostring(Config.Type))
+        Config.Callback(Value)
     end
 
-    -- Функции для создания элементов UI
-    local function CreateButton(parent, text, callback)
-        local Button = Instance.new("TextButton")
-        Button.Name = text .. "Button"
-        Button.Size = UDim2.new(1, 0, 0, 35)
-        Button.BackgroundColor3 = Colors.Button
-        Button.BorderColor3 = Colors.Border
-        Button.BorderSizePixel = 1
-        Button.Text = text
-        Button.TextColor3 = Colors.Text
-        Button.Font = Enum.Font.Gotham
-        Button.TextSize = 14
-        Button.Parent = parent
-
-        Button.MouseEnter:Connect(function()
-            Button.BackgroundColor3 = Colors.ButtonHover
-        end)
-
-        Button.MouseLeave:Connect(function()
-            Button.BackgroundColor3 = Colors.Button
-        end)
-
-        Button.MouseButton1Click:Connect(function()
-            if callback then
-                callback()
-            end
-        end)
-
-        return Button
-    end
-
-    local function CreateToggle(parent, text, default, callback)
-        local ToggleFrame = Instance.new("Frame")
-        ToggleFrame.Name = text .. "Toggle"
-        ToggleFrame.Size = UDim2.new(1, 0, 0, 25)
-        ToggleFrame.BackgroundTransparency = 1
-        ToggleFrame.Parent = parent
-
-        local ToggleButton = Instance.new("TextButton")
-        ToggleButton.Name = "ToggleButton"
-        ToggleButton.Size = UDim2.new(0, 40, 0, 20)
-        ToggleButton.Position = UDim2.new(1, -40, 0, 0)
-        ToggleButton.BackgroundColor3 = default and Colors.ToggleOn or Colors.ToggleOff
-        ToggleButton.BorderColor3 = Colors.Border
-        ToggleButton.BorderSizePixel = 1
-        ToggleButton.Text = ""
-        ToggleButton.Parent = ToggleFrame
-
-        local ToggleCircle = Instance.new("Frame")
-        ToggleCircle.Name = "ToggleCircle"
-        ToggleCircle.Size = UDim2.new(0, 16, 0, 16)
-        ToggleCircle.Position = UDim2.new(0, default and 20 or 2, 0, 2)
-        ToggleCircle.BackgroundColor3 = Colors.Text
-        ToggleCircle.BorderSizePixel = 0
-        ToggleCircle.Parent = ToggleButton
-
-        local ToggleText = Instance.new("TextLabel")
-        ToggleText.Name = "ToggleText"
-        ToggleText.Size = UDim2.new(1, -50, 1, 0)
-        ToggleText.BackgroundTransparency = 1
-        ToggleText.Text = text
-        ToggleText.TextColor3 = Colors.Text
-        ToggleText.TextXAlignment = Enum.TextXAlignment.Left
-        ToggleText.Font = Enum.Font.Gotham
-        ToggleText.TextSize = 14
-        ToggleText.Parent = ToggleFrame
-
-        local isToggled = default
-
-        local function Toggle()
-            isToggled = not isToggled
-            ToggleButton.BackgroundColor3 = isToggled and Colors.ToggleOn or Colors.ToggleOff
-            
-            local Tween = TweenService:Create(
-                ToggleCircle,
-                TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-                {Position = UDim2.new(0, isToggled and 20 or 2, 0, 2)}
-            )
-            Tween:Play()
-            
-            if callback then
-                callback(isToggled)
-            end
+    -- Обработчики ввода
+    ValueFrame.InputBegan:Connect(function(Input)
+        if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
+            IsHold = true
+            update(Input)
         end
+    end)
 
-        ToggleButton.MouseButton1Click:Connect(Toggle)
-
-        return {
-            Set = function(value)
-                if isToggled ~= value then
-                    Toggle()
-                end
-            end,
-            Get = function()
-                return isToggled
-            end
-        }
-    end
-
-    local function CreateSlider(parent, text, min, max, default, callback)
-        local SliderFrame = Instance.new("Frame")
-        SliderFrame.Name = text .. "Slider"
-        SliderFrame.Size = UDim2.new(1, 0, 0, 50)
-        SliderFrame.BackgroundTransparency = 1
-        SliderFrame.Parent = parent
-
-        local SliderText = Instance.new("TextLabel")
-        SliderText.Name = "SliderText"
-        SliderText.Size = UDim2.new(1, 0, 0, 20)
-        SliderText.BackgroundTransparency = 1
-        SliderText.Text = text
-        SliderText.TextColor3 = Colors.Text
-        SliderText.TextXAlignment = Enum.TextXAlignment.Left
-        SliderText.Font = Enum.Font.Gotham
-        SliderText.TextSize = 14
-        SliderText.Parent = SliderFrame
-
-        local ValueText = Instance.new("TextLabel")
-        ValueText.Name = "ValueText"
-        ValueText.Size = UDim2.new(0, 50, 0, 20)
-        ValueText.Position = UDim2.new(1, -50, 0, 0)
-        ValueText.BackgroundTransparency = 1
-        ValueText.Text = tostring(default)
-        ValueText.TextColor3 = Colors.Text
-        ValueText.TextXAlignment = Enum.TextXAlignment.Right
-        ValueText.Font = Enum.Font.Gotham
-        ValueText.TextSize = 14
-        ValueText.Parent = SliderFrame
-
-        local Track = Instance.new("Frame")
-        Track.Name = "Track"
-        Track.Size = UDim2.new(1, 0, 0, 5)
-        Track.Position = UDim2.new(0, 0, 0, 30)
-        Track.BackgroundColor3 = Colors.SliderTrack
-        Track.BorderSizePixel = 0
-        Track.Parent = SliderFrame
-
-        local Fill = Instance.new("Frame")
-        Fill.Name = "Fill"
-        Fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
-        Fill.BackgroundColor3 = Colors.SliderFill
-        Fill.BorderSizePixel = 0
-        Fill.Parent = Track
-
-        local Handle = Instance.new("TextButton")
-        Handle.Name = "Handle"
-        Handle.Size = UDim2.new(0, 15, 0, 15)
-        Handle.Position = UDim2.new((default - min) / (max - min), -7, 0.5, -7)
-        Handle.BackgroundColor3 = Colors.Text
-        Handle.BorderSizePixel = 0
-        Handle.Text = ""
-        Handle.Parent = Track
-
-        local dragging = false
-        local currentValue = default
-
-        local function UpdateSlider(input)
-            local relativeX = (input.Position.X - Track.AbsolutePosition.X) / Track.AbsoluteSize.X
-            relativeX = math.clamp(relativeX, 0, 1)
-            
-            currentValue = math.floor(min + (max - min) * relativeX)
-            ValueText.Text = tostring(currentValue)
-            Fill.Size = UDim2.new(relativeX, 0, 1, 0)
-            Handle.Position = UDim2.new(relativeX, -7, 0.5, -7)
-            
-            if callback then
-                callback(currentValue)
-            end
+    ValueFrame.InputEnded:Connect(function(Input)
+        if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
+            IsHold = false
         end
+    end)
 
-        Handle.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                dragging = true
-                UpdateSlider(input)
+    UserInputService.InputChanged:Connect(function(Input)
+        if IsHold and (Input.UserInputType == Enum.UserInputType.MouseMovement or Input.UserInputType == Enum.UserInputType.Touch) then
+            update(Input)
+        end
+    end)
+
+    return {
+        SetValue = function(value)
+            local IsSame = value == Config.Default
+            Config.Default = math.clamp(value, Config.Min, Config.Max)
+            
+            CreateAnimation(boxli, 0.2, {
+                Size = UDim2.new((Config.Default - Config.Min) / (Config.Max - Config.Min), 0, 1, 0)
+            })
+
+            ValueText.Text = string.format('%s%s', tostring(Config.Default), tostring(Config.Type))
+
+            if not IsSame then
+                Config.Callback(Config.Default)
             end
-        end)
-
-        Handle.InputEnded:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                dragging = false
-            end
-        end)
-
-        Track.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                dragging = true
-                UpdateSlider(input)
-            end
-        end)
-
-        UserInputService.InputChanged:Connect(function(input)
-            if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-                UpdateSlider(input)
-            end
-        end)
-
-        return {
-            GetValue = function()
-                return currentValue
-            end,
-            SetValue = function(value)
-                value = math.clamp(value, min, max)
-                currentValue = value
-                ValueText.Text = tostring(value)
-                local relativeX = (value - min) / (max - min)
-                Fill.Size = UDim2.new(relativeX, 0, 1, 0)
-                Handle.Position = UDim2.new(relativeX, -7, 0.5, -7)
-            end
-        }
-    end
-
-    -- Создаем вкладки и наполняем их
-    local MainTab = CreateTab("Основное")
-    local VisualsTab = CreateTab("Визуалы")
-    local CombatTab = CreateTab("Бой")
-
-    -- Основная вкладка
-    CreateButton(MainTab, "Тестовая кнопка", function()
-        print("Кнопка нажата!")
-    end)
-
-    local TestToggle = CreateToggle(MainTab, "Включить функцию", false, function(state)
-        print("Переключатель:", state)
-    end)
-
-    local TestSlider = CreateSlider(MainTab, "Скорость", 1, 100, 50, function(value)
-        print("Скорость:", value)
-    end)
-
-    -- Вкладка визуалов
-    CreateToggle(VisualsTab, "ESP игроков", false, function(state)
-        print("ESP:", state)
-    end)
-
-    CreateToggle(VisualsTab, "Траектории пуль", false, function(state)
-        print("Траектории:", state)
-    end)
-
-    CreateSlider(VisualsTab, "Яркость", 0, 100, 50, function(value)
-        print("Яркость:", value)
-    end)
-
-    -- Вкладка боя
-    CreateToggle(CombatTab, "Аимбот", false, function(state)
-        print("Аимбот:", state)
-    end)
-
-    CreateToggle(CombatTab, "Стена сквозь стены", false, function(state)
-        print("Wallhack:", state)
-    end)
-
-    CreateSlider(CombatTab, "Сила отдачи", 0, 100, 0, function(value)
-        print("Отдача:", value)
-    end)
-
-    -- Активируем первую вкладку
-    if Tabs[1] then
-        Tabs[1].Content.Visible = true
-        CurrentTab = {Content = Tabs[1].Content}
-    end
-
-    return ScreenGui
+        end,
+        GetValue = function()
+            return Config.Default
+        end
+    }
 end
 
--- Создаем меню при запуске
-CreateMenu()
+-- Пример использования
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Parent = game:GetService("CoreGui")
+ScreenGui.Name = "FatalityElements"
 
--- Добавляем горячую клавишу для показа/скрытия меню
-UserInputService.InputBegan:Connect(function(input)
-    if input.KeyCode == Enum.KeyCode.RightShift then
-        local existingMenu = game:GetService("CoreGui"):FindFirstChild("FatalityMenu")
-        if existingMenu then
-            existingMenu:Destroy()
-        else
-            CreateMenu()
-        end
+local Container = Instance.new("Frame")
+Container.Parent = ScreenGui
+Container.Size = UDim2.new(0, 300, 0, 200)
+Container.Position = UDim2.new(0.5, -150, 0.5, -100)
+Container.BackgroundColor3 = Colors.Background
+Container.BorderSizePixel = 0
+
+local Layout = Instance.new("UIListLayout")
+Layout.Parent = Container
+Layout.Padding = UDim.new(0, 10)
+
+-- Создание Toggle
+local myToggle = CreateToggle(Container, {
+    Name = "Включить функцию",
+    Default = false,
+    Risky = false,
+    Callback = function(state)
+        print("Toggle:", state)
     end
-end)
+})
+
+-- Создание Slider
+local mySlider = CreateSlider(Container, {
+    Name = "Скорость",
+    Default = 50,
+    Min = 0,
+    Max = 100,
+    Round = 0,
+    Type = "%",
+    Risky = false,
+    Callback = function(value)
+        print("Slider:", value)
+    end
+})
+
+-- Демонстрация управления элементами
+task.wait(3)
+myToggle:SetValue(true)
+mySlider:SetValue(75)
