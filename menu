@@ -1,7 +1,6 @@
-local Zypher = require(путь_к_вашей_библиотеке) -- Замените на правильный путь
+local Zypher = loadstring(game:HttpGet("https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/library"))()
 
--- Создаем экземпляр библиотеки
-local Library = Zypher.new("Zypher Menu", Enum.KeyCode.RightShift, Color3.fromRGB(65, 105, 225))
+local library = Zypher.new("My Menu", Enum.KeyCode.RightShift, Color3.fromRGB(255, 0, 0))
 
 -- Создаем перетаскиваемый круг
 local function CreateDragCircle()
