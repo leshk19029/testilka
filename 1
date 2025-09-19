@@ -9,36 +9,37 @@ function module.toggleAntiEffects(state)
             connection:Disconnect()
         end
         
-        local lighting = game:GetService("Lighting")
-        local camera = game:GetService("Workspace").CurrentCamera
+        local Lighting = game:GetService("Lighting")
+        local Camera = workspace.CurrentCamera
         
-        -- Функция для обработки эффектов
         local function processEffects()
             -- Удаляем все эффекты
-            for _, child in ipairs(lighting:GetChildren()) do
-                if table.find({"DiscoEffect", "Blur", "BeeBlur", "ColorCorrection"}, child.Name) then
+            for _, child in ipairs(Lighting:GetChildren()) do
+                if child.Name == "DiscoEffect" or child.Name == "Blur" or child.Name == "BeeBlur" or child.Name == "ColorCorrection" then
                     child:Destroy()
                 end
             end
             
             -- Фиксируем FOV
-            if camera then
-                camera.FieldOfView = 70
+            if Camera then
+                Camera.FieldOfView = 70
             end
         end
         
-        -- Запускаем сразу и создаем соединение
+        -- Запускаем сразу
         processEffects()
-        connection = game:GetService('RunService').Heartbeat:Connect(processEffects)
+        
+        -- Создаем постоянное соединение
+        connection = game:GetService("RunService").Heartbeat:Connect(processEffects)
         
         -- Слушатель для новых эффектов
-        lighting.ChildAdded:Connect(function(child)
-            if table.find({"DiscoEffect", "Blur", "BeeBlur", "ColorCorrection"}, child.Name) then
+        Lighting.ChildAdded:Connect(function(child)
+            if child.Name == "DiscoEffect" or child.Name == "Blur" or child.Name == "BeeBlur" or child.Name == "ColorCorrection" then
                 child:Destroy()
             end
         end)
     else
-        -- Выключаем Anti Effects
+        -- Выключаем
         if connection then
             connection:Disconnect()
             connection = nil
