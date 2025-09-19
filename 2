@@ -1,6 +1,3 @@
-local Players = game:GetService('Players')
-local RunService = game:GetService('RunService')
-
 local module = {}
 
 local speedEnabled = false
@@ -10,7 +7,7 @@ local velocityConnection = nil
 local function applyVelocity()
     if not speedEnabled then return end
     
-    local player = Players.LocalPlayer
+    local player = game:GetService('Players').LocalPlayer
     local character = player.Character
     if not character then return end
     
@@ -35,7 +32,7 @@ function module.toggleSpeedBoost(state)
         if velocityConnection then
             velocityConnection:Disconnect()
         end
-        velocityConnection = RunService.RenderStepped:Connect(applyVelocity)
+        velocityConnection = game:GetService('RunService').RenderStepped:Connect(applyVelocity)
     else
         if velocityConnection then
             velocityConnection:Disconnect()
