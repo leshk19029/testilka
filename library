@@ -92,7 +92,7 @@ function LIBRARY:CreateWindow(config)
     local keybind = config.Keybind or Enum.KeyCode.RightShift
 
     local screen = Instance.new("ScreenGui")
-    screen.Name = "SimpleUI"
+    screen.Name = "SimpleUI_" .. tostring(math.random(1, 1000))
     screen.Parent = CoreGui
     screen.ResetOnSpawn = false
     screen.IgnoreGuiInset = true
@@ -122,7 +122,7 @@ function LIBRARY:CreateWindow(config)
     titleLabel.BackgroundTransparency = 1
     titleLabel.Position = UDim2.new(0, 15, 0.5, 0)
     titleLabel.AnchorPoint = Vector2.new(0, 0.5)
-    titleLabel.Size = UDim2.new(1, 0, 1, 0)
+    titleLabel.Size = UDim2.new(0.5, 0, 0.8, 0)
     titleLabel.Font = LIBRARY.Font
     titleLabel.Text = title
     titleLabel.TextColor3 = LIBRARY.Colors.Text
@@ -144,9 +144,9 @@ function LIBRARY:CreateWindow(config)
 
     local tabsPadding = Instance.new("UIPadding")
     tabsPadding.Parent = tabsContainer
-    tabsPadding.PaddingTop = UDim.new(0, 5)
-    tabsPadding.PaddingLeft = UDim.new(0, 5)
-    tabsPadding.PaddingRight = UDim.new(0, 5)
+    tabsPadding.PaddingTop = UDim.new(0, 10)
+    tabsPadding.PaddingLeft = UDim.new(0, 10)
+    tabsPadding.PaddingRight = UDim.new(0, 10)
 
     -- Content Container (Right Side)
     local contentContainer = Instance.new("Frame")
@@ -191,14 +191,15 @@ function LIBRARY:CreateWindow(config)
         tabContent.Parent = contentContainer
         tabContent.BackgroundTransparency = 1
         tabContent.BorderSizePixel = 0
-        tabContent.Position = UDim2.new(0, 10, 0, 10)
-        tabContent.Size = UDim2.new(1, -20, 1, -20)
+        tabContent.Position = UDim2.new(0, 0, 0, 0)
+        tabContent.Size = UDim2.new(1, 0, 1, 0)
         tabContent.Visible = false
         tabContent.ScrollBarThickness = 6
         tabContent.ScrollBarImageColor3 = LIBRARY.Colors.Main
         tabContent.CanvasSize = UDim2.new(0, 0, 0, 0)
         tabContent.AutomaticCanvasSize = Enum.AutomaticSize.Y
         tabContent.ScrollingDirection = Enum.ScrollingDirection.Y
+        tabContent.Selectable = true
 
         local listLayout = Instance.new("UIListLayout")
         listLayout.Parent = tabContent
@@ -207,10 +208,10 @@ function LIBRARY:CreateWindow(config)
 
         local contentPadding = Instance.new("UIPadding")
         contentPadding.Parent = tabContent
-        contentPadding.PaddingTop = UDim.new(0, 5)
-        contentPadding.PaddingLeft = UDim.new(0, 5)
-        contentPadding.PaddingRight = UDim.new(0, 5)
-        contentPadding.PaddingBottom = UDim.new(0, 5)
+        contentPadding.PaddingTop = UDim.new(0, 10)
+        contentPadding.PaddingLeft = UDim.new(0, 10)
+        contentPadding.PaddingRight = UDim.new(0, 10)
+        contentPadding.PaddingBottom = UDim.new(0, 10)
 
         local elements = {}
 
@@ -250,7 +251,7 @@ function LIBRARY:CreateWindow(config)
             label.BackgroundTransparency = 1
             label.Position = UDim2.new(0, 10, 0.5, 0)
             label.AnchorPoint = Vector2.new(0, 0.5)
-            label.Size = UDim2.new(1, -50, 0.8, 0)
+            label.Size = UDim2.new(0.7, 0, 0.8, 0)
             label.Font = LIBRARY.Font
             label.Text = name
             label.TextColor3 = LIBRARY.Colors.Text
@@ -260,9 +261,9 @@ function LIBRARY:CreateWindow(config)
             local switch = Instance.new("TextButton")
             switch.Parent = toggleFrame
             switch.BackgroundColor3 = default and LIBRARY.Colors.Main or LIBRARY.Colors.Gray
-            switch.Position = UDim2.new(1, -30, 0.5, 0)
+            switch.Position = UDim2.new(1, -40, 0.5, 0)
             switch.AnchorPoint = Vector2.new(1, 0.5)
-            switch.Size = UDim2.new(0, 20, 0, 12)
+            switch.Size = UDim2.new(0, 24, 0, 12)
             switch.Font = LIBRARY.Font
             switch.Text = ""
             createCorner(switch, 6)
@@ -294,6 +295,7 @@ function LIBRARY:CreateWindow(config)
             local sliderFrame = Instance.new("Frame")
             sliderFrame.Name = name
             sliderFrame.Parent = tabContent
+            sliderশ
             sliderFrame.BackgroundColor3 = LIBRARY.Colors.Dark
             sliderFrame.Size = UDim2.new(1, 0, 0, 50)
             createCorner(sliderFrame, 4)
@@ -303,7 +305,7 @@ function LIBRARY:CreateWindow(config)
             label.Parent = sliderFrame
             label.BackgroundTransparency = 1
             label.Position = UDim2.new(0, 10, 0, 5)
-            label.Size = UDim2.new(1, -50, 0, 20)
+            label.Size = UDim2.new(0.7, 0, 0, 20)
             label.Font = LIBRARY.Font
             label.Text = name
             label.TextColor3 = LIBRARY.Colors.Text
@@ -313,8 +315,8 @@ function LIBRARY:CreateWindow(config)
             local valueLabel = Instance.new("TextLabel")
             valueLabel.Parent = sliderFrame
             valueLabel.BackgroundTransparency = 1
-            valueLabel.Position = UDim2.new(1, -40, 0, 5)
-            valueLabel.Size = UDim2.new(0, 30, 0, 20)
+            valueLabel.Position = UDim2.new(1, -50, 0, 5)
+            valueLabel.Size = UDim2.new(0, 40, 0, 20)
             valueLabel.Font = LIBRARY.Font
             valueLabel.Text = tostring(default)
             valueLabel.TextColor3 = LIBRARY.Colors.Text
@@ -401,7 +403,7 @@ function LIBRARY:CreateWindow(config)
             }
         end
 
-        -- Add Dropdown (Combo)
+        -- Add Dropdown
         function elements:AddDropdown(config)
             config = config or {}
             local name = config.Name or "Dropdown"
@@ -423,7 +425,7 @@ function LIBRARY:CreateWindow(config)
             label.BackgroundTransparency = 1
             label.Position = UDim2.new(0, 10, 0.5, 0)
             label.AnchorPoint = Vector2.new(0, 0.5)
-            label.Size = UDim2.new(1, -120, 0.8, 0)
+            label.Size = UDim2.new(0.7, 0, 0.8, 0)
             label.Font = LIBRARY.Font
             label.Text = name
             label.TextColor3 = LIBRARY.Colors.Text
@@ -435,7 +437,7 @@ function LIBRARY:CreateWindow(config)
             display.BackgroundColor3 = LIBRARY.Colors.Gray
             display.Position = UDim2.new(1, -110, 0.5, 0)
             display.AnchorPoint = Vector2.new(1, 0.5)
-            display.Size = UDim2.new(0, 100, 0, 20)
+            display.Size = UDim2.new(0, 100, 0, 24)
             display.Font = LIBRARY.Font
             display.Text = default
             display.TextColor3 = LIBRARY.Colors.Text
