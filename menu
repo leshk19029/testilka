@@ -1,239 +1,126 @@
 local Zypher = loadstring(game:HttpGet("https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/library"))()
 
-local library = Zypher.new("My Menu", Enum.KeyCode.RightShift, Color3.fromRGB(255, 0, 0))
+-- Создаем экземпляр библиотеки
+local Library = Zypher.new("Zypher Menu", Enum.KeyCode.RightShift, Color3.fromRGB(65, 105, 225))
 
-local mainTab = library:CreateTab("Main")
-library:CreateButton(mainTab, "Test Button", function()
-    print("Button clicked!")
+-- Создаем вкладки
+local MainTab = Library:CreateTab("Main")
+local CombatTab = Library:CreateTab("Combat")
+local VisualsTab = Library:CreateTab("Visuals")
+local SettingsTab = Library:CreateTab("Settings")
+
+-- Переменные для хранения состояний
+local ESPEnabled = false
+local AimbotEnabled = false
+local SpeedEnabled = false
+local JumpEnabled = false
+
+-- Главная вкладка
+Library:CreateLabel(MainTab, "Welcome to Zypher Menu!")
+Library:CreateLabel(MainTab, "Version: 1.0")
+
+-- Кнопка с примером функционала
+Library:CreateButton(MainTab, "Teleport to Spawn", function()
+    local player = game.Players.LocalPlayer
+    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        player.Character.HumanoidRootPart.CFrame = CFrame.new(0, 5, 0)
+        print("Teleported to spawn!")
+    end
 end)
 
-local toggle = library:CreateToggle(mainTab, "Test Toggle", false, function(value)
-    print("Toggle:", value)
+-- Переключатель ESP
+Library:CreateToggle(MainTab, "ESP", false, function(value)
+    ESPEnabled = value
+    print("ESP:", value and "Enabled" or "Disabled")
+    -- Здесь будет код ESP
 end)
 
-local slider = library:CreateSlider(mainTab, "Test Slider", 0, 100, 50, function(value)
-    print("Slider:", value)
+-- Слайдер для изменения скорости
+local SpeedSlider = Library:CreateSlider(MainTab, "Walk Speed", 16, 100, 16, function(value)
+    local player = game.Players.LocalPlayer
+    if player.Character and player.Character:FindFirstChild("Humanoid") then
+        player.Character.Humanoid.WalkSpeed = value
+    end
 end)
 
--- Создаем кружок для включения/выключения меню
-local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
+-- Вкладка Combat
+Library:CreateToggle(CombatTab, "Aimbot", false, function(value)
+    AimbotEnabled = value
+    print("Aimbot:", value and "Enabled" or "Disabled")
+    -- Код аимбота здесь
+end)
 
--- Функция для создания кружка-переключателя меню
-local function createMenuToggleCircle()
-    local circle = Instance.new("Frame")
-    circle.Name = "MenuToggleCircle"
-    circle.Size = UDim2.new(0, 70, 0, 70)
-    circle.Position = UDim2.new(0, 20, 0.5, -35)
-    circle.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-    circle.BorderSizePixel = 0
-    circle.BackgroundTransparency = 0.2
-    circle.Active = true
-    circle.Selectable = true
-    circle.ZIndex = 1000
-    circle.Parent = library.ScreenGui
-    
-    -- Делаем кружок круглым
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(1, 0)
-    corner.Parent = circle
-    
-    -- Текст внутри кружка
-    local textLabel = Instance.new("TextLabel")
-    textLabel.Name = "CircleText"
-    textLabel.Size = UDim2.new(1, 0, 1, 0)
-    textLabel.BackgroundTransparency = 1
-    textLabel.Text = "МЕНЮ\nВКЛ"
-    textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    textLabel.TextSize = 14
-    textLabel.Font = Enum.Font.GothamBold
-    textLabel.TextWrapped = true
-    textLabel.ZIndex = 1001
-    textLabel.Parent = circle
-    
-    -- Иконка меню
-    local icon = Instance.new("TextLabel")
-    icon.Name = "MenuIcon"
-    icon.Size = UDim2.new(0, 30, 0, 30)
-    icon.Position = UDim2.new(0.5, -15, 0.2, 0)
-    icon.BackgroundTransparency = 1
-    icon.Text = "≡"
-    icon.TextColor3 = Color3.fromRGB(255, 255, 255)
-    icon.TextSize = 24
-    icon.Font = Enum.Font.GothamBold
-    icon.ZIndex = 1001
-    icon.Parent = circle
-    
-    -- Переменные для перемещения
-    local isDragging = false
-    local dragStart = nil
-    local startPos = nil
-    local clickCooldown = false
-    
-    -- Функция для обновления внешнего вида кружка
-    local function updateCircleAppearance()
-        if library.Enabled then
-            circle.BackgroundColor3 = Color3.fromRGB(50, 255, 50) -- Зеленый когда меню включено
-            textLabel.Text = "МЕНЮ\nВКЛ"
-            textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-            icon.TextColor3 = Color3.fromRGB(255, 255, 255)
-        else
-            circle.BackgroundColor3 = Color3.fromRGB(255, 50, 50) -- Красный когда меню выключено
-            textLabel.Text = "МЕНЮ\nВЫКЛ"
-            textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-            icon.TextColor3 = Color3.fromRGB(255, 255, 255)
-        end
+Library:CreateSlider(CombatTab, "Aimbot FOV", 1, 360, 90, function(value)
+    print("Aimbot FOV set to:", value)
+end)
+
+Library:CreateToggle(CombatTab, "Trigger Bot", false, function(value)
+    print("Trigger Bot:", value and "Enabled" or "Disabled")
+end)
+
+-- Вкладка Visuals
+Library:CreateToggle(VisualsTab, "Wallhack", false, function(value)
+    print("Wallhack:", value and "Enabled" or "Disabled")
+end)
+
+Library:CreateToggle(VisualsTab, "Fullbright", false, function(value)
+    if value then
+        game.Lighting.Ambient = Color3.new(1, 1, 1)
+        game.Lighting.FogEnd = 100000
+    else
+        game.Lighting.Ambient = Color3.new(0.5, 0.5, 0.5)
+        game.Lighting.FogEnd = 1000
     end
-    
-    -- Изначально обновляем внешний вид
-    updateCircleAppearance()
-    
-    -- Функция для переключения меню
-    local function toggleMenu()
-        if clickCooldown then return end
-        
-        clickCooldown = true
-        
-        -- Анимация клика
-        local originalSize = circle.Size
-        circle.Size = UDim2.new(0, 60, 0, 60)
-        
-        -- Переключаем меню
-        library:Toggle()
-        
-        -- Обновляем внешний вид после переключения
-        updateCircleAppearance()
-        
-        print("Menu toggled:", library.Enabled)
-        
-        -- Возвращаем к исходному размеру через 0.3 секунды
-        task.delay(0.3, function()
-            circle.Size = originalSize
-            clickCooldown = false
-        end)
+end)
+
+Library:CreateSlider(VisualsTab, "Field of View", 70, 120, 70, function(value)
+    local player = game.Players.LocalPlayer
+    if player:FindFirstChild("Camera") then
+        player.Camera.FieldOfView = value
     end
+end)
+
+-- Вкладка Settings
+Library:CreateButton(SettingsTab, "Save Configuration", function()
+    print("Configuration saved!")
+end)
+
+Library:CreateButton(SettingsTab, "Load Configuration", function()
+    print("Configuration loaded!")
+end)
+
+Library:CreateToggle(SettingsTab, "Auto Save", true, function(value)
+    print("Auto Save:", value and "Enabled" or "Disabled")
+end)
+
+-- Дополнительные функции для мобильной оптимизации
+if Library.IS_MOBILE then
+    Library:CreateLabel(SettingsTab, "Mobile Settings")
     
-    -- Обработка ввода для ПК
-    circle.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            isDragging = true
-            dragStart = input.Position
-            startPos = circle.Position
-            
-            -- Поднимаем кружок на верхний слой при начале перетаскивания
-            circle.ZIndex = 1002
-            
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    isDragging = false
-                    circle.ZIndex = 1000
-                    
-                    -- Проверяем, был ли это клик (малое перемещение)
-                    if dragStart and (input.Position - dragStart).Magnitude < 10 then
-                        toggleMenu()
-                    end
-                end
-            end)
-        end
+    Library:CreateSlider(SettingsTab, "UI Scale", 0.5, 1.5, 1, function(value)
+        Library.MainFrame.Size = UDim2.new(0, 500 * value, 0, 350 * value)
     end)
     
-    -- Обработка ввода для мобильных устройств
-    circle.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.Touch then
-            isDragging = true
-            dragStart = input.Position
-            startPos = circle.Position
-            
-            circle.ZIndex = 1002
-            
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    isDragging = false
-                    circle.ZIndex = 1000
-                    
-                    -- Проверяем, был ли это тап (малое перемещение)
-                    if dragStart and (input.Position - dragStart).Magnitude < 15 then
-                        toggleMenu()
-                    end
-                end
-            end)
-        end
+    Library:CreateToggle(SettingsTab, "Vibration Feedback", true, function(value)
+        print("Vibration:", value and "Enabled" or "Disabled")
     end)
-    
-    -- Обработка перемещения для ПК
-    circle.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement and isDragging then
-            local delta = input.Position - dragStart
-            circle.Position = UDim2.new(
-                startPos.X.Scale, 
-                startPos.X.Offset + delta.X,
-                startPos.Y.Scale, 
-                startPos.Y.Offset + delta.Y
-            )
-        end
-    end)
-    
-    -- Обработка перемещения для мобильных устройств
-    circle.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.Touch and isDragging then
-            local delta = input.Position - dragStart
-            circle.Position = UDim2.new(
-                startPos.X.Scale, 
-                startPos.X.Offset + delta.X,
-                startPos.Y.Scale, 
-                startPos.Y.Offset + delta.Y
-            )
-        end
-    end)
-    
-    -- Ограничиваем кружок в пределах экрана
-    local function keepInBounds()
-        if not circle then return end
-        
-        local screenSize = workspace.CurrentCamera.ViewportSize
-        local circleSize = circle.AbsoluteSize
-        local position = circle.Position
-        
-        local minX = 0
-        local maxX = screenSize.X - circleSize.X
-        local minY = 0
-        local maxY = screenSize.Y - circleSize.Y
-        
-        local newX = math.clamp(position.X.Offset, minX, maxX)
-        local newY = math.clamp(position.Y.Offset, minY, maxY)
-        
-        if newX ~= position.X.Offset or newY ~= position.Y.Offset then
-            circle.Position = UDim2.new(position.X.Scale, newX, position.Y.Scale, newY)
-        end
-    end
-    
-    -- Постоянно проверяем границы
-    RunService.Heartbeat:Connect(keepInBounds)
-    
-    -- Кнопка в меню для скрытия/показа кружка
-    library:CreateButton(mainTab, "Toggle Circle", function()
-        circle.Visible = not circle.Visible
-    end)
-    
-    -- Кнопка для сброса позиции кружка
-    library:CreateButton(mainTab, "Reset Circle Position", function()
-        circle.Position = UDim2.new(0, 20, 0.5, -35)
-    end)
-    
-    -- Слайдер для изменения размера кружка
-    library:CreateSlider(mainTab, "Circle Size", 50, 100, 70, function(value)
-        circle.Size = UDim2.new(0, value, 0, value)
-    end)
-    
-    -- Слайдер для изменения прозрачности кружка
-    library:CreateSlider(mainTab, "Circle Transparency", 0, 80, 20, function(value)
-        circle.BackgroundTransparency = value / 100
-    end)
-    
-    return circle
 end
 
--- Создаем кружок-переключатель меню
-local menuToggleCircle = createMenuToggleCircle()
+-- Функция для демонстрации работы меню
+Library:CreateButton(MainTab, "Test All Features", function()
+    print("Testing all features...")
+    
+    -- Тестируем переключатели
+    ESPEnabled = not ESPEnabled
+    print("ESP toggled to:", ESPEnabled)
+    
+    -- Тестируем слайдер
+    SpeedSlider.Value = 50
+    print("Speed set to: 50")
+end)
 
-print("Menu toggle circle created! Click/tap to toggle menu, drag to move!")
+-- Информационная метка
+Library:CreateLabel(MainTab, "Press RightShift to toggle menu")
+if Library.IS_MOBILE then
+    Library:CreateLabel(MainTab, "Use the button in the corner to toggle menu")
+end
