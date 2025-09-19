@@ -1,6 +1,7 @@
 local Zypher = loadstring(game:HttpGet("https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/library"))()
 
-local library = Zypher.new("My Menu", Enum.KeyCode.RightShift, Color3.fromRGB(255, 0, 0))
+-- Создаем экземпляр библиотеки
+local Library = Zypher.new("Zypher Menu", Enum.KeyCode.RightShift, Color3.fromRGB(65, 105, 225))
 
 -- Создаем перетаскиваемый круг
 local function CreateDragCircle()
@@ -8,7 +9,14 @@ local function CreateDragCircle()
     local RunService = game:GetService("RunService")
     local Players = game:GetService("Players")
     local LocalPlayer = Players.LocalPlayer
-    local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+    
+    -- Создаем отдельный ScreenGui для круга
+    local CircleGui = Instance.new("ScreenGui")
+    CircleGui.Name = "DragCircleGui"
+    CircleGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+    CircleGui.ResetOnSpawn = false
+    CircleGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    CircleGui.IgnoreGuiInset = true
     
     -- Создаем круг
     local DragCircle = Instance.new("Frame")
@@ -28,6 +36,13 @@ local function CreateDragCircle()
     UICorner.CornerRadius = UDim.new(1, 0)
     UICorner.Parent = DragCircle
     
+    -- Добавляем тень
+    local UIStroke = Instance.new("UIStroke")
+    UIStroke.Color = Color3.fromRGB(255, 255, 255)
+    UIStroke.Thickness = 2
+    UIStroke.Transparency = 0.5
+    UIStroke.Parent = DragCircle
+    
     -- Добавляем иконку меню
     local MenuIcon = Instance.new("TextLabel")
     MenuIcon.Name = "MenuIcon"
@@ -38,6 +53,7 @@ local function CreateDragCircle()
     MenuIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
     MenuIcon.TextSize = 24
     MenuIcon.Font = Enum.Font.GothamBold
+    MenuIcon.ZIndex = 1001
     MenuIcon.Parent = DragCircle
     
     -- Эффект нажатия
@@ -45,7 +61,7 @@ local function CreateDragCircle()
     UIScale.Parent = DragCircle
     
     -- Добавляем в интерфейс
-    DragCircle.Parent = PlayerGui
+    DragCircle.Parent = CircleGui
     
     -- Переменные для перетаскивания
     local isDragging = false
@@ -56,11 +72,21 @@ local function CreateDragCircle()
     -- Функция для анимации нажатия
     local function animatePress(isPressed)
         if isPressed then
-            UIScale.Scale = 0.8
-            DragCircle.BackgroundTransparency = 0.1
+            -- Плавная анимация
+            local tweenInfo = TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+            local scaleTween = TweenService:Create(UIScale, tweenInfo, {Scale = 0.8})
+            local transparencyTween = TweenService:Create(DragCircle, tweenInfo, {BackgroundTransparency = 0.1})
+            
+            scaleTween:Play()
+            transparencyTween:Play()
         else
-            UIScale.Scale = 1
-            DragCircle.BackgroundTransparency = 0.3
+            -- Плавное возвращение
+            local tweenInfo = TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+            local scaleTween = TweenService:Create(UIScale, tweenInfo, {Scale = 1})
+            local transparencyTween = TweenService:Create(DragCircle, tweenInfo, {BackgroundTransparency = 0.3})
+            
+            scaleTween:Play()
+            transparencyTween:Play()
         end
     end
     
@@ -73,10 +99,12 @@ local function CreateDragCircle()
                 dragStart = input.Position
                 startPos = DragCircle.Position
                 
-                input.Changed:Connect(function()
+                local connection
+                connection = input.Changed:Connect(function()
                     if input.UserInputState == Enum.UserInputState.End then
                         isDragging = false
                         animatePress(false)
+                        connection:Disconnect()
                     end
                 end)
             end
@@ -97,11 +125,23 @@ local function CreateDragCircle()
         DragCircle.MouseButton1Click:Connect(function()
             Library:Toggle()
         end)
+        
+        DragCircle.MouseEnter:Connect(function()
+            UIStroke.Transparency = 0.2
+        end)
+        
+        DragCircle.MouseLeave:Connect(function()
+            UIStroke.Transparency = 0.5
+        end)
+        
     else
         -- Обработка ввода для мобильных устройств
         local touchStartTime = 0
         local touchStartPos = nil
         local isTouchDragging = false
+        
+        -- Делаем кнопку более удобной для касаний
+        DragCircle.Size = UDim2.new(0, 70, 0, 70) -- Увеличиваем для мобильных
         
         DragCircle.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.Touch then
@@ -110,7 +150,8 @@ local function CreateDragCircle()
                 isTouchDragging = false
                 animatePress(true)
                 
-                input.Changed:Connect(function()
+                local connection
+                connection = input.Changed:Connect(function()
                     if input.UserInputState == Enum.UserInputState.End then
                         local touchDuration = tick() - touchStartTime
                         
@@ -120,6 +161,7 @@ local function CreateDragCircle()
                         end
                         
                         animatePress(false)
+                        connection:Disconnect()
                     end
                 end)
             end
@@ -131,8 +173,8 @@ local function CreateDragCircle()
                 if touchStartPos then
                     local delta = (currentPos - touchStartPos).Magnitude
                     
-                    -- Если перемещение больше 10 пикселей - считаем это перетаскиванием
-                    if delta > 10 then
+                    -- Если перемещение больше 15 пикселей - считаем это перетаскиванием
+                    if delta > 15 then
                         isTouchDragging = true
                         
                         local deltaPos = currentPos - touchStartPos
@@ -152,7 +194,7 @@ local function CreateDragCircle()
     
     -- Функция для обеспечения видимости круга в пределах экрана
     local function ensureVisibility()
-        local screenSize = PlayerGui.AbsoluteSize
+        local screenSize = workspace.CurrentCamera.ViewportSize
         local circleSize = DragCircle.AbsoluteSize
         local currentPos = DragCircle.Position
         
@@ -170,7 +212,14 @@ local function CreateDragCircle()
     end
     
     -- Периодическая проверка видимости
-    RunService.Heartbeat:Connect(ensureVisibility)
+    local visibilityConnection
+    visibilityConnection = RunService.Heartbeat:Connect(function()
+        if DragCircle and DragCircle.Parent then
+            ensureVisibility()
+        else
+            visibilityConnection:Disconnect()
+        end
+    end)
     
     -- Функция для скрытия/показа круга при открытии/закрытии меню
     Library.MainFrame:GetPropertyChangedSignal("Visible"):Connect(function()
@@ -181,13 +230,21 @@ local function CreateDragCircle()
         end
     end)
     
+    -- Автоматическое скрытие при смерти/респавне
+    LocalPlayer.CharacterAdded:Connect(function()
+        if DragCircle then
+            DragCircle.Visible = true
+        end
+    end)
+    
     return DragCircle
 end
 
--- Создаем круг
+-- Создаем круг (добавляем небольшую задержку для гарантии загрузки)
+task.wait(1)
 local DragCircle = CreateDragCircle()
 
--- Теперь создаем меню (пример)
+-- Теперь создаем меню
 local MainTab = Library:CreateTab("Main")
 local CombatTab = Library:CreateTab("Combat")
 local VisualsTab = Library:CreateTab("Visuals")
@@ -202,14 +259,33 @@ Library:CreateToggle(MainTab, "Example Toggle", false, function(value)
     print("Toggle:", value)
 end)
 
+Library:CreateSlider(MainTab, "Example Slider", 0, 100, 50, function(value)
+    print("Slider value:", value)
+end)
+
 -- Вкладка Combat
 Library:CreateToggle(CombatTab, "Aimbot", false, function(value)
-    print("Aimbot:", value)
+    print("Aimbot:", value and "Enabled" or "Disabled")
+end)
+
+Library:CreateToggle(CombatTab, "Wallhack", false, function(value)
+    print("Wallhack:", value and "Enabled" or "Disabled")
 end)
 
 -- Вкладка Visuals
 Library:CreateToggle(VisualsTab, "ESP", false, function(value)
-    print("ESP:", value)
+    print("ESP:", value and "Enabled" or "Disabled")
 end)
 
-print("Drag Circle Menu loaded! Use the circle to open/close menu.")
+Library:CreateToggle(VisualsTab, "Fullbright", false, function(value)
+    if value then
+        game.Lighting.Ambient = Color3.new(1, 1, 1)
+        game.Lighting.FogEnd = 100000
+    else
+        game.Lighting.Ambient = Color3.new(0.5, 0.5, 0.5)
+        game.Lighting.FogEnd = 1000
+    end
+    print("Fullbright:", value and "Enabled" or "Disabled")
+end)
+
+print("Drag Circle Menu loaded! Use the blue circle to open/close menu.")
