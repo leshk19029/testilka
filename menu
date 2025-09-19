@@ -20,7 +20,7 @@ local function loadModule(url, moduleName)
 end
 
 -- Загружаем модули
-local SpeedBoostModule = loadModule("https://raw.githubusercontent.com/leshk19029/sphirit/refs/heads/main/2", "Speed Boost")
+local SpeedBoostModule = loadModule("https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/2", "Speed Boost")
 local AntiEffectsModule = loadModule("https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/1", "Anti Effects")
 local ESPModule = loadModule("https://raw.githubusercontent.com/leshk19029/sphirit/refs/heads/main/esp", "ESP")
 
