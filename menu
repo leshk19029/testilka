@@ -19,6 +19,10 @@ local SpeedBoostModule = loadModule("https://raw.githubusercontent.com/leshk1902
 local AntiEffectsModule = loadModule("https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/1")
 local ESPModule = loadModule("https://raw.githubusercontent.com/leshk19029/sphirit/refs/heads/main/esp")
 
+-- Переменные для хранения состояния
+local speedBoostEnabled = false
+local currentSpeed = 25
+
 -- Создаем вкладку Main
 local mainTab = window:CreateCategory("Main")
 
@@ -27,19 +31,26 @@ local movementSection = mainTab:CreateSection("Movement")
 local playerSection = mainTab:CreateSection("Player")
 local visualSection = mainTab:CreateSection("Visual")
 
--- Speed Boost
+-- Speed Boost - исправленная реализация
 if SpeedBoostModule then
     -- Toggle для Speed Boost
     movementSection:Create("Toggle", "Speed Boost", function(state)
-        if SpeedBoostModule.toggleSpeedBoost then
-            SpeedBoostModule.toggleSpeedBoost(state)
+        speedBoostEnabled = state
+        if state then
+            -- Включаем speed boost с текущим значением
+            SpeedBoostModule(currentSpeed)
+        else
+            -- Отключаем speed boost (устанавливаем нормальную скорость)
+            SpeedBoostModule(16) -- Стандартная скорость в большинстве игр
         end
     end, {default = false})
     
     -- Slider для Speed Value
     movementSection:Create("Slider", "Speed Value", function(value)
-        if SpeedBoostModule.setSpeed then
-            SpeedBoostModule.setSpeed(value)
+        currentSpeed = value
+        if speedBoostEnabled then
+            -- Обновляем скорость, если boost включен
+            SpeedBoostModule(value)
         end
     end, {min = 1, max = 45, default = 25, precise = false})
 else
@@ -69,6 +80,7 @@ else
 end
 
 -- Hotkey для открытия/закрытия
+local UIS = game:GetService("UserInputService")
 UIS.InputBegan:Connect(function(input)
     if input.KeyCode == Enum.KeyCode.LeftControl then
         window.Motherframe.Visible = not window.Motherframe.Visible
