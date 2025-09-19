@@ -1,18 +1,58 @@
-local MyLibrary = loadstring(game:HttpGet("https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/library"))()
+https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/library
 
-local UI = MyLibrary:Create({
-    Name = "МОЯ БИБЛИОТЕКА",
-    Keybind = "RightShift"
+local MyCustomUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/library"))()
+
+-- Создание окна
+local window = MyCustomUI:CreateWindow({
+    Name = "Мое Кастомное Меню",
+    Keybind = Enum.KeyCode.RightShift
 })
 
-local MainTab = UI:CreateTab("Главная")
-local CombatTab = UI:CreateTab("Бой")
+-- Создание секций
+local mainSection = window:CreateSection("Основные настройки")
+local visualSection = window:CreateSection("Визуальные настройки")
 
--- Теперь переключение вкладок работает правильно
-local Toggle1 = MainTab:AddToggle({
-    Name = "Включить функции",
+-- Добавление элементов
+local toggle = window:CreateToggle(mainSection, {
+    Name = "Включить функцию",
     Default = false,
+    Callback = function(state)
+        print("Функция:", state)
+    end
+})
+
+local slider = window:CreateSlider(mainSection, {
+    Name = "Скорость",
+    Min = 0,
+    Max = 100,
+    Default = 50,
     Callback = function(value)
-        print("Toggle:", value)
+        print("Скорость:", value)
+    end
+})
+
+local button = window:CreateButton(mainSection, {
+    Name = "Активировать",
+    Callback = function()
+        print("Функция активирована!")
+    end
+})
+
+-- Визуальные настройки
+window:CreateToggle(visualSection, {
+    Name = "Эффекты",
+    Default = true,
+    Callback = function(state)
+        print("Эффекты:", state)
+    end
+})
+
+window:CreateSlider(visualSection, {
+    Name = "Яркость",
+    Min = 0,
+    Max = 100,
+    Default = 75,
+    Callback = function(value)
+        print("Яркость:", value)
     end
 })
