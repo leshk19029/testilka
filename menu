@@ -1,203 +1,78 @@
 -- Загрузка вашей библиотеки
-local Zypher = loadstring(game:HttpGet("https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/library"))()
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/teppyboy/RbxScripts/master/Misc/UI_Libraries/Zypher/Library.lua"))()
 
 -- Создание главного окна
-local window = Zypher.new("PURY MENU", Enum.KeyCode.LeftControl, Color3.fromRGB(60, 120, 200))
+local window = Library:CreateMain({
+    projName = "PURY"
+})
 
 -- Функция для загрузки модулей
-local function loadModule(url, moduleName)
+local function loadModule(url)
     local success, result = pcall(function()
-        local content = game:HttpGet(url)
-        return loadstring(content)()
+        return loadstring(game:HttpGet(url))()
     end)
-    
-    if success then
-        print("✅ " .. moduleName .. " loaded successfully")
-        return result
-    else
-        warn("❌ " .. moduleName .. " failed to load: " .. tostring(result))
-        return nil
-    end
+    return success and result or nil
 end
 
--- Загружаем модули
-local SpeedBoostModule = loadModule("https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/2", "Speed Boost")
-local AntiEffectsModule = loadModule("https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/1", "Anti Effects")
-local ESPModule = loadModule("https://raw.githubusercontent.com/leshk19029/sphirit/refs/heads/main/esp", "ESP")
-
--- Создаем кружок для меню
-local function createFloatingCircle()
-    local circle = Instance.new("TextButton")
-    circle.Name = "PURYFloatingCircle"
-    circle.Size = UDim2.new(0, 50, 0, 50)
-    circle.Position = UDim2.new(0, 20, 0, 20)
-    circle.BackgroundColor3 = Color3.fromRGB(60, 120, 200)
-    circle.Text = "P"
-    circle.TextColor3 = Color3.fromRGB(255, 255, 255)
-    circle.TextSize = 20
-    circle.Font = Enum.Font.GothamBold
-    circle.BorderSizePixel = 0
-    circle.ZIndex = 100
-    circle.Parent = window.ScreenGui
-    
-    -- Делаем кружок круглым
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(1, 0)
-    corner.Parent = circle
-    
-    -- Добавляем тень/эффект
-    local shadow = Instance.new("Frame")
-    shadow.Size = UDim2.new(1, 0, 1, 0)
-    shadow.BackgroundColor3 = Color3.fromRGB(40, 80, 160)
-    shadow.BorderSizePixel = 0
-    shadow.ZIndex = 99
-    shadow.Parent = circle
-    
-    local shadowCorner = Instance.new("UICorner")
-    shadowCorner.CornerRadius = UDim.new(1, 0)
-    shadowCorner.Parent = shadow
-    
-    -- Анимация при наведении
-    circle.MouseEnter:Connect(function()
-        game:GetService("TweenService"):Create(
-            circle,
-            TweenInfo.new(0.2),
-            {Size = UDim2.new(0, 55, 0, 55), BackgroundColor3 = Color3.fromRGB(80, 160, 255)}
-        ):Play()
-    end)
-    
-    circle.MouseLeave:Connect(function()
-        game:GetService("TweenService"):Create(
-            circle,
-            TweenInfo.new(0.2),
-            {Size = UDim2.new(0, 50, 0, 50), BackgroundColor3 = Color3.fromRGB(60, 120, 200)}
-        ):Play()
-    end)
-    
-    -- Функционал перетаскивания
-    local dragging = false
-    local dragStart = nil
-    local startPos = nil
-    
-    circle.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStart = input.Position
-            startPos = circle.Position
-            
-            -- Анимация нажатия
-            game:GetService("TweenService"):Create(
-                circle,
-                TweenInfo.new(0.1),
-                {Size = UDim2.new(0, 45, 0, 45), BackgroundColor3 = Color3.fromRGB(40, 100, 220)}
-            ):Play()
-        end
-    end)
-    
-    circle.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = false
-            
-            -- Возвращаем размер
-            game:GetService("TweenService"):Create(
-                circle,
-                TweenInfo.new(0.1),
-                {Size = UDim2.new(0, 50, 0, 50), BackgroundColor3 = Color3.fromRGB(60, 120, 200)}
-            ):Play()
-            
-            -- Если было короткое нажатие (не перетаскивание), открываем меню
-            if (input.Position - dragStart).Magnitude < 10 then
-                window:Toggle()
-            end
-        end
-    end)
-    
-    -- Обработка перетаскивания
-    game:GetService("UserInputService").InputChanged:Connect(function(input)
-        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            local delta = input.Position - dragStart
-            circle.Position = UDim2.new(
-                0, math.clamp(startPos.X.Offset + delta.X, 0, workspace.CurrentCamera.ViewportSize.X - 50),
-                0, math.clamp(startPos.Y.Offset + delta.Y, 0, workspace.CurrentCamera.ViewportSize.Y - 50)
-            )
-        end
-    end)
-    
-    -- Функция для открытия/закрытия по клику
-    circle.MouseButton1Click:Connect(function()
-        if not dragging then
-            window:Toggle()
-        end
-    end)
-    
-    return circle
-end
+-- Загружаем только рабочие модули
+local SpeedBoostModule = loadModule("https://raw.githubusercontent.com/leshk19029/sphirit/refs/heads/main/2")
+local AntiEffectsModule = loadModule("https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/1")
+local ESPModule = loadModule("https://raw.githubusercontent.com/leshk19029/sphirit/refs/heads/main/esp")
 
 -- Создаем вкладку Main
-local mainTab = window:CreateTab("Main")
+local mainTab = window:CreateCategory("Main")
 
--- Переменные для хранения состояний
-local speedBoostEnabled = false
-local currentSpeedValue = 25
+-- Создаем секции
+local movementSection = mainTab:CreateSection("Movement")
+local playerSection = mainTab:CreateSection("Player")
+local visualSection = mainTab:CreateSection("Visual")
 
--- Speed Boost Section
-window:CreateLabel(mainTab, "=== MOVEMENT ===")
-
+-- Speed Boost
 if SpeedBoostModule then
-    -- Toggle для Speed Boost
-    window:CreateToggle(mainTab, "Speed Boost", false, function(state)
-        speedBoostEnabled = state
+    movementSection:Create("Toggle", "Speed Boost", function(state)
         if SpeedBoostModule.toggleSpeedBoost then
             SpeedBoostModule.toggleSpeedBoost(state)
         end
-        print("Speed Boost: " .. (state and "ON" or "OFF"))
-    end)
+    end, {default = false})
     
-    -- Slider для значения скорости
-    window:CreateSlider(mainTab, "Speed Value", 1, 45, 25, function(value)
-        currentSpeedValue = value
-        if speedBoostEnabled and SpeedBoostModule.setSpeed then
+    movementSection:Create("Slider", "Speed Value", function(value)
+        if SpeedBoostModule.setSpeed then
             SpeedBoostModule.setSpeed(value)
         end
-        print("Speed set to: " .. value)
-    end)
+    end, {min = 1, max = 45, default = 25, precise = false})
 else
-    window:CreateLabel(mainTab, "❌ Speed Boost module not loaded")
+    warn("Speed Boost module not loaded")
 end
 
--- Anti Effects Section
-window:CreateLabel(mainTab, "=== PLAYER ===")
-
+-- Anti Effects
 if AntiEffectsModule then
-    window:CreateToggle(mainTab, "Anti Effects", false, function(state)
+    playerSection:Create("Toggle", "Anti Effects", function(state)
         if AntiEffectsModule.toggleAntiEffects then
             AntiEffectsModule.toggleAntiEffects(state)
         end
-        print("Anti Effects: " .. (state and "ON" or "OFF"))
-    end)
+    end, {default = false})
 else
-    window:CreateLabel(mainTab, "❌ Anti Effects module not loaded")
+    warn("Anti Effects module not loaded")
 end
 
--- ESP Section
-window:CreateLabel(mainTab, "=== VISUAL ===")
-
+-- ESP
 if ESPModule then
-    window:CreateToggle(mainTab, "ESP", false, function(state)
+    visualSection:Create("Toggle", "ESP", function(state)
         if ESPModule.ToggleAll then
             ESPModule.ToggleAll(state)
         end
-        print("ESP: " .. (state and "ON" or "OFF"))
-    end)
+    end, {default = false})
 else
-    window:CreateLabel(mainTab, "❌ ESP module not loaded")
+    warn("ESP module not loaded")
 end
 
--- Добавляем информационную метку
-window:CreateLabel(mainTab, " ")
-window:CreateLabel(mainTab, "Click the PURY circle to toggle menu")
+-- Hotkey для открытия/закрытия
+UIS.InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.LeftControl then
+        window.Motherframe.Visible = not window.Motherframe.Visible
+    end
+end)
 
--- Создаем кружок ПОСЛЕ создания всех элементов интерфейса
-local floatingCircle = createFloatingCircle()
+print("PURY Menu Loaded!")
 
-print("PURY Menu Loaded Successfully!")
+это мое меню, анализируй код
