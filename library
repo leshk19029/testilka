@@ -46,6 +46,8 @@ function Library:Create(options)
     options = options or {}
     local lib = {}
     lib.Visible = false
+    lib.Tabs = {}
+    lib.CurrentTab = nil
     
     -- Создание основного интерфейса
     local ScreenGui = self:CreateElement("ScreenGui", {
@@ -123,13 +125,10 @@ function Library:Create(options)
     })
     ContentLayout.Parent = ContentScrolling
     
-    -- Табы и контент
-    lib.Tabs = {}
-    lib.CurrentTab = nil
-    
     -- Функция создания вкладки
     function lib:CreateTab(name)
         local tab = {}
+        tab.Name = name
         
         -- Кнопка вкладки
         local TabButton = Library:CreateElement("TextButton", {
@@ -153,8 +152,8 @@ function Library:Create(options)
             Font = Enum.Font.Gotham,
             TextXAlignment = Enum.TextXAlignment.Left
         })
-        TabButtonText.Parent = TabButton
         TabButtonText.Position = UDim2.new(0, 15, 0, 0)
+        TabButtonText.Parent = TabButton
         
         -- Контент вкладки
         local TabContent = Library:CreateElement("ScrollingFrame", {
@@ -432,44 +431,43 @@ function Library:Create(options)
         return tab
     end
     
-    -- Функция переключения вкладок
-    function lib:SwitchTab(tab)
-        if self.CurrentTab then
-            -- Найти кнопку предыдущей вкладки
-            for _, button in pairs(TabContainer:GetChildren()) do
-                if button:IsA("TextButton") and button.TextLabel.Text == self.CurrentTab then
-                    game:GetService("TweenService"):Create(
-                        button,
-                        TweenInfo.new(0.2),
-                        {BackgroundColor3 = Library.Colors.TabButton}
-                    ):Play()
-                end
+    -- Функция переключения вкладок (ИСПРАВЛЕНА)
+    function lib:SwitchTab(selectedTab)
+        -- Скрыть все вкладки
+        for _, tab in ipairs(self.Tabs) do
+            local tabContent = ContentScrolling:FindFirstChild(tab.Name .. "Content")
+            if tabContent then
+                tabContent.Visible = false
             end
             
-            -- Скрыть предыдущий контент
-            local oldContent = ContentScrolling:FindFirstChild(self.CurrentTab .. "Content")
-            if oldContent then
-                oldContent.Visible = false
+            -- Вернуть обычный цвет всем кнопкам
+            local tabButton = TabContainer:FindFirstChild(tab.Name .. "TabButton")
+            if tabButton then
+                game:GetService("TweenService"):Create(
+                    tabButton,
+                    TweenInfo.new(0.2),
+                    {BackgroundColor3 = Library.Colors.TabButton}
+                ):Play()
             end
         end
         
-        -- Показать новый контент
-        local newContent = ContentScrolling:FindFirstChild(tab .. "Content")
-        if newContent then
-            newContent.Visible = true
+        -- Показать выбранную вкладку
+        local selectedContent = ContentScrolling:FindFirstChild(selectedTab.Name .. "Content")
+        if selectedContent then
+            selectedContent.Visible = true
         end
         
-        -- Подсветить кнопку вкладки
-        local tabButton = TabContainer:FindFirstChild(tab .. "TabButton")
-        if tabButton then
+        -- Подсветить кнопку выбранной вкладки
+        local selectedButton = TabContainer:FindFirstChild(selectedTab.Name .. "TabButton")
+        if selectedButton then
             game:GetService("TweenService"):Create(
-                tabButton,
+                selectedButton,
                 TweenInfo.new(0.2),
                 {BackgroundColor3 = Library.Colors.TabButtonSelected}
             ):Play()
         end
         
-        self.CurrentTab = tab
+        self.CurrentTab = selectedTab
     end
     
     -- Функции показа/скрытия
