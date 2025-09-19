@@ -14,7 +14,7 @@ local function loadModule(url)
     return success and result or nil
 end
 
--- Загружаем только рабочие модули
+-- Загружаем модули
 local SpeedBoostModule = loadModule("https://raw.githubusercontent.com/leshk19029/sphirit/refs/heads/main/2")
 local AntiEffectsModule = loadModule("https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/1")
 local ESPModule = loadModule("https://raw.githubusercontent.com/leshk19029/sphirit/refs/heads/main/esp")
@@ -29,12 +29,14 @@ local visualSection = mainTab:CreateSection("Visual")
 
 -- Speed Boost
 if SpeedBoostModule then
+    -- Toggle для Speed Boost
     movementSection:Create("Toggle", "Speed Boost", function(state)
         if SpeedBoostModule.toggleSpeedBoost then
             SpeedBoostModule.toggleSpeedBoost(state)
         end
     end, {default = false})
     
+    -- Slider для Speed Value
     movementSection:Create("Slider", "Speed Value", function(value)
         if SpeedBoostModule.setSpeed then
             SpeedBoostModule.setSpeed(value)
