@@ -1,168 +1,59 @@
--- Загрузка вашей библиотеки
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/teppyboy/RbxScripts/master/Misc/UI_Libraries/Zypher/Library.lua"))()
+-- Загрузка библиотеки Zypher
+local Zypher = loadstring(game:HttpGet("https://raw.githubusercontent.com/teppyboy/RbxScripts/master/Misc/UI_Libraries/Zypher/Library.lua"))()
 
--- Создание главного окна
-local window = Library:CreateMain({
-    projName = "PURY"
+-- Создание окна меню
+local Window = Zypher:CreateWindow({
+    Name = "Мое меню",
+    LoadingTitle = "Загрузка...",
+    LoadingSubtitle = "Меню загружается",
+    ConfigurationSaving = {
+        Enabled = false
+    }
 })
 
--- Функция для загрузки модулей
-local function loadModule(url)
-    local success, result = pcall(function()
-        return loadstring(game:HttpGet(url))()
-    end)
-    if success then
-        print("Module loaded successfully:", url)
-        return result
+-- Создание вкладки Main
+local MainTab = Window:CreateTab("Main", nil)
+
+-- Создание секции в вкладке Main
+local MainSection = MainTab:CreateSection("Функции")
+
+-- Переменная для хранения состояния ESP
+local ESPEnabled = false
+
+-- Функция для включения/выключения ESP (заглушка)
+local function ToggleESP()
+    ESPEnabled = not ESPEnabled
+    if ESPEnabled then
+        print("ESP включен")
+        -- Здесь будет код для включения ESP
     else
-        warn("Failed to load module:", url, result)
-        return nil
+        print("ESP выключен")
+        -- Здесь будет код для выключения ESP
     end
 end
 
--- Загружаем модули
-local SpeedBoostModule = loadModule("https://raw.githubusercontent.com/leshk19029/sphirit/refs/heads/main/2")
-local AntiEffectsModule = loadModule("https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/1")
-local ESPModule = loadModule("https://raw.githubusercontent.com/leshk19029/sphirit/refs/heads/main/esp")
-
--- Создаем вкладку Main
-local mainTab = window:CreateCategory("Main")
-
--- Создаем секции
-local movementSection = mainTab:CreateSection("Movement")
-local playerSection = mainTab:CreateSection("Player")
-local visualSection = mainTab:CreateSection("Visual")
-
--- Speed Boost (исправленная обработка)
-if SpeedBoostModule then
-    local speedEnabled = false
-    local currentSpeed = 25
-    local velocityConnection = nil
-    
-    local function applyVelocity()
-        if not speedEnabled then return end
-        
-        local player = game:GetService('Players').LocalPlayer
-        local character = player.Character
-        if not character then return end
-        
-        local humanoid = character:FindFirstChild("Humanoid")
-        local rootPart = character:FindFirstChild("HumanoidRootPart")
-        
-        if humanoid and rootPart then
-            local moveDirection = humanoid.MoveDirection
-            if moveDirection.Magnitude > 0 then
-                local velocity = moveDirection * currentSpeed
-                rootPart.Velocity = Vector3.new(velocity.X, rootPart.Velocity.Y, velocity.Z)
-            else
-                rootPart.Velocity = Vector3.new(0, rootPart.Velocity.Y, 0)
-            end
-        end
-    end
-    
-    movementSection:Create("Toggle", "Speed Boost", function(state)
-        speedEnabled = state
-        
-        if speedEnabled then
-            if velocityConnection then
-                velocityConnection:Disconnect()
-            end
-            velocityConnection = game:GetService('RunService').RenderStepped:Connect(applyVelocity)
+-- Создание переключателя ESP
+MainSection:CreateToggle({
+    Name = "ESP",
+    CurrentValue = false,
+    Flag = "ESP_Toggle",
+    Callback = function(Value)
+        ESPEnabled = Value
+        if Value then
+            print("ESP включен")
+            -- Здесь будет код для включения ESP
         else
-            if velocityConnection then
-                velocityConnection:Disconnect()
-                velocityConnection = nil
-            end
+            print("ESP выключен")
+            -- Здесь будет код для выключения ESP
         end
-    end, {default = false})
-    
-    movementSection:Create("Slider", "Speed Value", function(value)
-        currentSpeed = math.clamp(value, 1, 45)
-    end, {min = 1, max = 45, default = 25, precise = false})
-else
-    warn("Speed Boost module not loaded - using built-in")
-end
-
--- Anti Effects (исправленная обработка)
-if AntiEffectsModule then
-    local antiEffectsEnabled = false
-    local antiEffectsConnection = nil
-    
-    local function antiEffectsFunction()
-        local lighting = game:GetService("Lighting")
-        local camera = game:GetService("Workspace").CurrentCamera
-
-        -- Функция для удаления DiscoEffect
-        local function checkForDiscoEffect(child)
-            if child.Name == "DiscoEffect" then
-                child:Destroy()
-                
-                -- Удаляем Blur
-                local blur = lighting:FindFirstChild("Blur")
-                if blur then
-                    blur:Destroy()
-                end
-
-                -- Фиксируем FieldOfView
-                camera.FieldOfView = 70
-            end
-        end
-
-        -- Проверяем существующие эффекты
-        for _, child in ipairs(lighting:GetChildren()) do
-            if table.find({"DiscoEffect", "Blur", "BeeBlur", "ColorCorrection"}, child.Name) then
-                child:Destroy()
-            end
-        end
-
-        -- Фиксируем FOV
-        camera.FieldOfView = 70
     end
-    
-    playerSection:Create("Toggle", "Anti Effects", function(state)
-        antiEffectsEnabled = state
-        
-        if antiEffectsEnabled then
-            -- Запускаем функцию и создаем соединение
-            antiEffectsFunction()
-            if antiEffectsConnection then
-                antiEffectsConnection:Disconnect()
-            end
-            antiEffectsConnection = game:GetService('RunService').Heartbeat:Connect(antiEffectsFunction)
-            
-            -- Слушатель для новых эффектов
-            game:GetService("Lighting").ChildAdded:Connect(function(child)
-                if table.find({"DiscoEffect", "Blur", "BeeBlur", "ColorCorrection"}, child.Name) then
-                    child:Destroy()
-                end
-            end)
-        else
-            -- Отключаем
-            if antiEffectsConnection then
-                antiEffectsConnection:Disconnect()
-                antiEffectsConnection = nil
-            end
-        end
-    end, {default = false})
-else
-    warn("Anti Effects module not loaded - using built-in")
-end
+})
 
--- ESP
-if ESPModule and ESPModule.ToggleAll then
-    visualSection:Create("Toggle", "ESP", function(state)
-        ESPModule.ToggleAll(state)
-    end, {default = false})
-else
-    warn("ESP module not loaded")
-end
-
--- Hotkey для открытия/закрытия
-local UIS = game:GetService("UserInputService")
-UIS.InputBegan:Connect(function(input)
-    if input.KeyCode == Enum.KeyCode.LeftControl then
-        window.Motherframe.Visible = not window.Motherframe.Visible
+-- Альтернативный вариант с кнопкой
+MainSection:CreateButton({
+    Name = "Включить/Выключить ESP",
+    Interact = 'Click',
+    Callback = function()
+        ToggleESP()
     end
-end)
-
-print("PURY Menu Loaded!")
+})
