@@ -1,59 +1,27 @@
-local Compkiller = loadstring(game:HttpGet('https://raw.githubusercontent.com/4lpaca-pin/CompKiller/refs/heads/main/src/source.luau'))();
+local UI = require('https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/library')
 
--- Создание окна с темным фоном
-local Window = Compkiller.new({
-    Name = "SPEED MENU",
-    Keybind = "RightAlt",
-    Logo = "rbxassetid://120245531583106",
-    Scale = Compkiller.Scale.Window,
-    TextSize = 15,
-});
+-- Создание окна
+local window = UI:CreateWindow("Мое окно")
 
--- Создание вкладки
-local SpeedTab = Window:DrawTab({
-    Name = "Speed",
-    Icon = "zap", -- Иконка молнии
-    EnableScrolling = true
-});
+-- Создание кнопки
+UI:CreateButton(window.Container, "Нажми меня", function()
+    print("Кнопка нажата!")
+end)
 
--- Создание секции с темным фоном
-local SpeedSection = SpeedTab:DrawSection({
-    Name = "Speed Controls",
-    Position = 'left'
-});
+-- Создание переключателя
+local toggle = UI:CreateToggle(window.Container, "Включить что-то", false, function(state)
+    print("Переключатель:", state)
+end)
 
--- Добавление переключателя Speed Boost
-local SpeedToggle = SpeedSection:AddToggle({
-    Name = "Speed Boost",
-    Flag = "Speed_Boost_Toggle",
-    Default = false,
-    Callback = function(enabled)
-        if enabled then
-            print("Speed Boost активирован!")
-            -- Здесь будет код активации увеличения скорости
-        else
-            print("Speed Boost деактивирован!")
-            -- Здесь будет код деактивации увеличения скорости
-        end
-    end,
-});
+-- Создание слайдера
+local slider = UI:CreateSlider(window.Container, "Громкость", 0, 100, 50, function(value)
+    print("Значение слайдера:", value)
+end)
 
--- Добавление слайдера для настройки скорости
-local SpeedSlider = SpeedSection:AddSlider({
-    Name = "Speed Value",
-    Min = 0,
-    Max = 25,
-    Default = 16,
-    Round = 0,
-    Flag = "Speed_Value_Slider",
-    Callback = function(value)
-        print("Установлена скорость:", value)
-        -- Здесь будет код установки значения скорости
-    end
-});
+-- Создание текстового поля
+UI:CreateTextBox(window.Container, "", "Введите текст...", function(text)
+    print("Введенный текст:", text)
+end)
 
--- Добавление вспомогательного текста
-SpeedSection:AddParagraph({
-    Title = "Информация",
-    Content = "Speed Boost: Включает/выключает ускорение\nSpeed Value: Устанавливает значение скорости (0-25)"
-});
+-- Создание метки
+UI:CreateLabel(window.Container, "Это метка")
