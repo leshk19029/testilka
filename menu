@@ -1,146 +1,59 @@
-local Zypher = loadstring(game:HttpGet("https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/library"))()
+-- Загрузка библиотеки Zypher
+local Zypher = loadstring(game:HttpGet("https://raw.githubusercontent.com/teppyboy/RbxScripts/master/Misc/UI_Libraries/Zypher/Library.lua"))()
 
--- Создаем экземпляр библиотеки
-local Library = Zypher.new("Simple Menu", Enum.KeyCode.LeftControl, Color3.fromRGB(65, 105, 225))
+-- Создание окна меню
+local Window = Zypher:CreateWindow({
+    Name = "Мое меню",
+    LoadingTitle = "Загрузка...",
+    LoadingSubtitle = "Меню загружается",
+    ConfigurationSaving = {
+        Enabled = false
+    }
+})
 
--- Создаем вкладки
-local MainTab = Library:CreateTab("Main")
-local SettingsTab = Library:CreateTab("Settings")
+-- Создание вкладки Main
+local MainTab = Window:CreateTab("Main", nil)
 
--- Добавляем элементы на главную вкладку
-Library:CreateButton(MainTab, "Teleport to Spawn", function()
-    print("Телепортируемся на спавн")
-    -- Ваш код телепортации
-end)
+-- Создание секции в вкладке Main
+local MainSection = MainTab:CreateSection("Функции")
 
-Library:CreateButton(MainTab, "Collect Resources", function()
-    print("Собираем ресурсы")
-    -- Ваш код сбора ресурсов
-end)
+-- Переменная для хранения состояния ESP
+local ESPEnabled = false
 
-local ToggleExample = Library:CreateToggle(MainTab, "Auto Farm", false, function(value)
-    print("Auto Farm:", value)
-    -- Ваш код авто-фарма
-end)
-
-local SliderExample = Library:CreateSlider(MainTab, "Walk Speed", 16, 100, 16, function(value)
-    print("Walk Speed:", value)
-    -- Установка скорости ходьбы
-end)
-
--- Добавляем элементы на вкладку настроек
-Library:CreateLabel(SettingsTab, "Настройки интерфейса")
-
-Library:CreateToggle(SettingsTab, "Показывать FPS", true, function(value)
-    print("Показывать FPS:", value)
-    -- Ваш код отображения FPS
-end)
-
-Library:CreateSlider(SettingsTab, "Громкость", 0, 100, 50, function(value)
-    print("Громкость:", value)
-    -- Установка громкости
-end)
-
--- Создаем кружку для включения/выключения меню
-local ToggleCircle = Instance.new("TextButton")
-ToggleCircle.Name = "ToggleCircle"
-ToggleCircle.Size = UDim2.new(0, 50, 0, 50)
-ToggleCircle.Position = UDim2.new(0, 20, 0.5, -25)
-ToggleCircle.AnchorPoint = Vector2.new(0, 0.5)
-ToggleCircle.BackgroundColor3 = Color3.fromRGB(65, 105, 225)
-ToggleCircle.Text = "☰"
-ToggleCircle.TextColor3 = Color3.fromRGB(255, 255, 255)
-ToggleCircle.TextSize = 20
-ToggleCircle.Font = Enum.Font.GothamBold
-ToggleCircle.BorderSizePixel = 0
-ToggleCircle.ZIndex = 100
-ToggleCircle.Parent = Library.ScreenGui
-
--- Делаем кружку круглой
-ToggleCircle.AutoButtonColor = false
-local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(1, 0)
-corner.Parent = ToggleCircle
-
--- Добавляем анимацию при наведении (только для ПК)
-if not Library.IS_MOBILE then
-    ToggleCircle.MouseEnter:Connect(function()
-        game:GetService("TweenService"):Create(
-            ToggleCircle,
-            TweenInfo.new(0.2),
-            {BackgroundColor3 = Color3.fromRGB(85, 125, 245)}
-        ):Play()
-    end)
-    
-    ToggleCircle.MouseLeave:Connect(function()
-        game:GetService("TweenService"):Create(
-            ToggleCircle,
-            TweenInfo.new(0.2),
-            {BackgroundColor3 = Color3.fromRGB(65, 105, 225)}
-        ):Play()
-    end)
+-- Функция для включения/выключения ESP (заглушка)
+local function ToggleESP()
+    ESPEnabled = not ESPEnabled
+    if ESPEnabled then
+        print("ESP включен")
+        -- Здесь будет код для включения ESP
+    else
+        print("ESP выключен")
+        -- Здесь будет код для выключения ESP
+    end
 end
 
--- Функция для переключения видимости кружки
-local function updateCircleVisibility()
-    ToggleCircle.Visible = not Library.Enabled
-end
-
--- Обработчик клика по кружке
-ToggleCircle.MouseButton1Click:Connect(function()
-    Library:Toggle()
-    updateCircleVisibility()
-end)
-
--- Обновляем видимость кружки при закрытии меню через другие способы
-Library.CloseButton.MouseButton1Click:Connect(updateCircleVisibility)
-
--- Обработчик для Left Ctrl (только для ПК)
-if not Library.IS_MOBILE then
-    game:GetService("UserInputService").InputBegan:Connect(function(input)
-        if input.KeyCode == Enum.KeyCode.LeftControl then
-            Library:Toggle()
-            updateCircleVisibility()
+-- Создание переключателя ESP
+MainSection:CreateToggle({
+    Name = "ESP",
+    CurrentValue = false,
+    Flag = "ESP_Toggle",
+    Callback = function(Value)
+        ESPEnabled = Value
+        if Value then
+            print("ESP включен")
+            -- Здесь будет код для включения ESP
+        else
+            print("ESP выключен")
+            -- Здесь будет код для выключения ESP
         end
-    end)
-end
+    end
+})
 
--- Изначально скрываем кружку, если меню открыто
-if Library.Enabled then
-    ToggleCircle.Visible = false
-end
-
--- Делаем кружку перетаскиваемой (для мобильных устройств)
-if Library.IS_MOBILE then
-    local dragStart = nil
-    local startPos = nil
-    local isDragging = false
-
-    ToggleCircle.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.Touch then
-            dragStart = input.Position
-            startPos = ToggleCircle.Position
-            isDragging = true
-            
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    isDragging = false
-                end
-            end)
-        end
-    end)
-
-    ToggleCircle.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.Touch and isDragging then
-            local delta = input.Position - dragStart
-            ToggleCircle.Position = UDim2.new(
-                startPos.X.Scale, 
-                startPos.X.Offset + delta.X,
-                startPos.Y.Scale, 
-                startPos.Y.Offset + delta.Y
-            )
-        end
-    end)
-end
-
-return Library
+-- Альтернативный вариант с кнопкой
+MainSection:CreateButton({
+    Name = "Включить/Выключить ESP",
+    Interact = 'Click',
+    Callback = function()
+        ToggleESP()
+    end
+})
