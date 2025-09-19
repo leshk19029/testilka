@@ -54,13 +54,6 @@ local function getTextSize(text, size, font)
     return TextService:GetTextSize(text, size or 14, font or LIBRARY.Font, Vector2.new(1e9, 1e9))
 end
 
-local function isMouseOver(frame)
-    local pos = frame.AbsolutePosition
-    local size = frame.AbsoluteSize
-    return Mouse.X >= pos.X and Mouse.X <= pos.X + size.X and Mouse.Y >= pos.Y and Mouse.Y <= pos.Y + size.Y
-end
-
--- Dragging Function (works on PC and Mobile)
 local function addDrag(frame)
     local dragging = false
     local dragStart = nil
@@ -121,8 +114,7 @@ function LIBRARY:CreateWindow(config)
     header.Parent = mainFrame
     header.BackgroundColor3 = LIBRARY.Colors.Dark
     header.Size = UDim2.new(1, 0, 0, 50)
-    createCorner(header, 8, 0, 0, 8) -- Top corners only
-    createStroke(header, LIBRARY.Colors.Gray, 1)
+    createCorner(header, 8)
 
     local titleLabel = Instance.new("TextLabel")
     titleLabel.Name = "Title"
@@ -150,6 +142,12 @@ function LIBRARY:CreateWindow(config)
     tabsList.SortOrder = Enum.SortOrder.LayoutOrder
     tabsList.Padding = UDim.new(0, 5)
 
+    local tabsPadding = Instance.new("UIPadding")
+    tabsPadding.Parent = tabsContainer
+    tabsPadding.PaddingTop = UDim.new(0, 5)
+    tabsPadding.PaddingLeft = UDim.new(0, 5)
+    tabsPadding.PaddingRight = UDim.new(0, 5)
+
     -- Content Container (Right Side)
     local contentContainer = Instance.new("Frame")
     contentContainer.Name = "Content"
@@ -159,7 +157,6 @@ function LIBRARY:CreateWindow(config)
     contentContainer.Size = UDim2.new(1, -150, 1, -50)
 
     local currentTab = nil
-
     local tabData = {}
 
     -- Toggle Window
@@ -194,16 +191,26 @@ function LIBRARY:CreateWindow(config)
         tabContent.Parent = contentContainer
         tabContent.BackgroundTransparency = 1
         tabContent.BorderSizePixel = 0
-        tabContent.Position = UDim2.new(0, 0, 0, 0)
-        tabContent.Size = UDim2.new(1, 0, 1, 0)
+        tabContent.Position = UDim2.new(0, 10, 0, 10)
+        tabContent.Size = UDim2.new(1, -20, 1, -20)
         tabContent.Visible = false
         tabContent.ScrollBarThickness = 6
         tabContent.ScrollBarImageColor3 = LIBRARY.Colors.Main
+        tabContent.CanvasSize = UDim2.new(0, 0, 0, 0)
+        tabContent.AutomaticCanvasSize = Enum.AutomaticSize.Y
+        tabContent.ScrollingDirection = Enum.ScrollingDirection.Y
 
         local listLayout = Instance.new("UIListLayout")
         listLayout.Parent = tabContent
         listLayout.SortOrder = Enum.SortOrder.LayoutOrder
-        listLayout.Padding = UDim.new(0, 5)
+        listLayout.Padding = UDim.new(0, 8)
+
+        local contentPadding = Instance.new("UIPadding")
+        contentPadding.Parent = tabContent
+        contentPadding.PaddingTop = UDim.new(0, 5)
+        contentPadding.PaddingLeft = UDim.new(0, 5)
+        contentPadding.PaddingRight = UDim.new(0, 5)
+        contentPadding.PaddingBottom = UDim.new(0, 5)
 
         local elements = {}
 
@@ -221,6 +228,7 @@ function LIBRARY:CreateWindow(config)
         tabButton.MouseButton1Click:Connect(select)
 
         if #tabData == 0 then select() end
+        table.insert(tabData, {Button = tabButton, Content = tabContent})
 
         -- Add Toggle
         function elements:AddToggle(config)
@@ -233,15 +241,16 @@ function LIBRARY:CreateWindow(config)
             toggleFrame.Name = name
             toggleFrame.Parent = tabContent
             toggleFrame.BackgroundColor3 = LIBRARY.Colors.Dark
-            toggleFrame.Size = UDim2.new(1, -10, 0, 30)
+            toggleFrame.Size = UDim2.new(1, 0, 0, 30)
             createCorner(toggleFrame, 4)
             createStroke(toggleFrame, LIBRARY.Colors.Gray, 1)
 
             local label = Instance.new("TextLabel")
             label.Parent = toggleFrame
             label.BackgroundTransparency = 1
-            label.Position = UDim2.new(0, 10, 0, 0)
-            label.Size = UDim2.new(1, -50, 1, 0)
+            label.Position = UDim2.new(0, 10, 0.5, 0)
+            label.AnchorPoint = Vector2.new(0, 0.5)
+            label.Size = UDim2.new(1, -50, 0.8, 0)
             label.Font = LIBRARY.Font
             label.Text = name
             label.TextColor3 = LIBRARY.Colors.Text
@@ -252,7 +261,7 @@ function LIBRARY:CreateWindow(config)
             switch.Parent = toggleFrame
             switch.BackgroundColor3 = default and LIBRARY.Colors.Main or LIBRARY.Colors.Gray
             switch.Position = UDim2.new(1, -30, 0.5, 0)
-            switch.AnchorPoint = Vector2.new(0.5, 0.5)
+            switch.AnchorPoint = Vector2.new(1, 0.5)
             switch.Size = UDim2.new(0, 20, 0, 12)
             switch.Font = LIBRARY.Font
             switch.Text = ""
@@ -260,14 +269,15 @@ function LIBRARY:CreateWindow(config)
 
             switch.MouseButton1Click:Connect(function()
                 default = not default
-                switch.BackgroundColor3 = default and LIBRARY.Colors.Main or LIBRARY.Colors.Gray
+                tween(switch, 0.2, {BackgroundColor3 = default and LIBRARY.Colors.Main or LIBRARY.Colors.Gray})
                 callback(default)
             end)
 
             return {
                 Set = function(value)
                     default = value
-                    switch.BackgroundColor3 = default and LIBRARY.Colors.Main or LIBRARY.Colors.Gray
+                    tween(switch, 0.2, {BackgroundColor3 = default and LIBRARY.Colors.Main or LIBRARY.Colors.Gray})
+                    callback(default)
                 end
             }
         end
@@ -278,22 +288,22 @@ function LIBRARY:CreateWindow(config)
             local name = config.Name or "Slider"
             local min = config.Min or 0
             local max = config.Max or 100
-            local default = config.Default or 50
+            local default = config.Default or math.floor((max - min) / 2)
             local callback = config.Callback or function() end
 
             local sliderFrame = Instance.new("Frame")
             sliderFrame.Name = name
             sliderFrame.Parent = tabContent
             sliderFrame.BackgroundColor3 = LIBRARY.Colors.Dark
-            sliderFrame.Size = UDim2.new(1, -10, 0, 50)
+            sliderFrame.Size = UDim2.new(1, 0, 0, 50)
             createCorner(sliderFrame, 4)
             createStroke(sliderFrame, LIBRARY.Colors.Gray, 1)
 
             local label = Instance.new("TextLabel")
             label.Parent = sliderFrame
             label.BackgroundTransparency = 1
-            label.Position = UDim2.new(0, 10, 0, 0)
-            label.Size = UDim2.new(1, 0, 0.5, 0)
+            label.Position = UDim2.new(0, 10, 0, 5)
+            label.Size = UDim2.new(1, -50, 0, 20)
             label.Font = LIBRARY.Font
             label.Text = name
             label.TextColor3 = LIBRARY.Colors.Text
@@ -303,9 +313,8 @@ function LIBRARY:CreateWindow(config)
             local valueLabel = Instance.new("TextLabel")
             valueLabel.Parent = sliderFrame
             valueLabel.BackgroundTransparency = 1
-            valueLabel.Position = UDim2.new(1, -10, 0, 0)
-            valueLabel.AnchorPoint = Vector2.new(1, 0.5)
-            valueLabel.Size = UDim2.new(0, 50, 0.5, 0)
+            valueLabel.Position = UDim2.new(1, -40, 0, 5)
+            valueLabel.Size = UDim2.new(0, 30, 0, 20)
             valueLabel.Font = LIBRARY.Font
             valueLabel.Text = tostring(default)
             valueLabel.TextColor3 = LIBRARY.Colors.Text
@@ -315,7 +324,7 @@ function LIBRARY:CreateWindow(config)
             local bar = Instance.new("Frame")
             bar.Parent = sliderFrame
             bar.BackgroundColor3 = LIBRARY.Colors.Gray
-            bar.Position = UDim2.new(0, 10, 1, -10)
+            bar.Position = UDim2.new(0, 10, 0, 30)
             bar.Size = UDim2.new(1, -20, 0, 6)
             createCorner(bar, 3)
 
@@ -350,10 +359,11 @@ function LIBRARY:CreateWindow(config)
 
             return {
                 Set = function(value)
-                    default = value
+                    value = math.clamp(value, min, max)
                     local percent = (value - min) / (max - min)
                     fill.Size = UDim2.new(percent, 0, 1, 0)
                     valueLabel.Text = tostring(value)
+                    callback(value)
                 end
             }
         end
@@ -368,7 +378,7 @@ function LIBRARY:CreateWindow(config)
             buttonFrame.Name = name
             buttonFrame.Parent = tabContent
             buttonFrame.BackgroundColor3 = LIBRARY.Colors.Main
-            buttonFrame.Size = UDim2.new(1, -10, 0, 35)
+            buttonFrame.Size = UDim2.new(1, 0, 0, 35)
             buttonFrame.Font = LIBRARY.Font
             buttonFrame.Text = name
             buttonFrame.TextColor3 = LIBRARY.Colors.Text
@@ -404,15 +414,16 @@ function LIBRARY:CreateWindow(config)
             dropdownFrame.Name = name
             dropdownFrame.Parent = tabContent
             dropdownFrame.BackgroundColor3 = LIBRARY.Colors.Dark
-            dropdownFrame.Size = UDim2.new(1, -10, 0, 40)
+            dropdownFrame.Size = UDim2.new(1, 0, 0, 40)
             createCorner(dropdownFrame, 4)
             createStroke(dropdownFrame, LIBRARY.Colors.Gray, 1)
 
             local label = Instance.new("TextLabel")
             label.Parent = dropdownFrame
             label.BackgroundTransparency = 1
-            label.Position = UDim2.new(0, 10, 0, 0)
-            label.Size = UDim2.new(1, -40, 0.5, 0)
+            label.Position = UDim2.new(0, 10, 0.5, 0)
+            label.AnchorPoint = Vector2.new(0, 0.5)
+            label.Size = UDim2.new(1, -120, 0.8, 0)
             label.Font = LIBRARY.Font
             label.Text = name
             label.TextColor3 = LIBRARY.Colors.Text
@@ -422,9 +433,9 @@ function LIBRARY:CreateWindow(config)
             local display = Instance.new("TextButton")
             display.Parent = dropdownFrame
             display.BackgroundColor3 = LIBRARY.Colors.Gray
-            display.Position = UDim2.new(1, -35, 0.5, 0)
+            display.Position = UDim2.new(1, -110, 0.5, 0)
             display.AnchorPoint = Vector2.new(1, 0.5)
-            display.Size = UDim2.new(0, 100, 0.5, 0)
+            display.Size = UDim2.new(0, 100, 0, 20)
             display.Font = LIBRARY.Font
             display.Text = default
             display.TextColor3 = LIBRARY.Colors.Text
@@ -434,7 +445,7 @@ function LIBRARY:CreateWindow(config)
             local dropdownList = Instance.new("Frame")
             dropdownList.Parent = dropdownFrame
             dropdownList.BackgroundColor3 = LIBRARY.Colors.Dark
-            dropdownList.Position = UDim2.new(1, -105, 1, 0)
+            dropdownList.Position = UDim2.new(1, -110, 1, 2)
             dropdownList.AnchorPoint = Vector2.new(1, 0)
             dropdownList.Size = UDim2.new(0, 100, 0, 0)
             dropdownList.Visible = false
@@ -458,18 +469,16 @@ function LIBRARY:CreateWindow(config)
                 optBtn.TextXAlignment = Enum.TextXAlignment.Left
 
                 optBtn.MouseButton1Click:Connect(function()
-                    if multi then
-                        -- Multi select logic here if needed
-                    else
+                    if not multi then
                         display.Text = opt
                         callback(opt)
+                        dropdownList.Visible = false
                     end
-                    dropdownList.Visible = false
                 end)
             end
 
             listLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-                dropdownList.Size = UDim2.new(0, 100, 0, listLayout.AbsoluteContentSize.Y)
+                dropdownList.Size = UDim2.new(0, 100, 0, math.min(listLayout.AbsoluteContentSize.Y, 100))
             end)
 
             display.MouseButton1Click:Connect(function()
@@ -479,9 +488,30 @@ function LIBRARY:CreateWindow(config)
             return {
                 Set = function(value)
                     display.Text = value
+                    callback(value)
                 end,
                 Refresh = function(newOptions)
-                    -- Clear and rebuild options
+                    for _, v in ipairs(dropdownList:GetChildren()) do
+                        if v:IsA("TextButton") then v:Destroy() end
+                    end
+                    for _, opt in ipairs(newOptions) do
+                        local optBtn = Instance.new("TextButton")
+                        optBtn.Parent = dropdownList
+                        optBtn.BackgroundTransparency = 1
+                        optBtn.Size = UDim2.new(1, 0, 0, 25)
+                        optBtn.Font = LIBRARY.Font
+                        optBtn.Text = opt
+                        optBtn.TextColor3 = LIBRARY.Colors.Text
+                        optBtn.TextSize = 12
+                        optBtn.TextXAlignment = Enum.TextXAlignment.Left
+                        optBtn.MouseButton1Click:Connect(function()
+                            if not multi then
+                                display.Text = opt
+                                callback(opt)
+                                dropdownList.Visible = false
+                            end
+                        end)
+                    end
                 end
             }
         end
