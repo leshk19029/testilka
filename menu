@@ -19,10 +19,6 @@ local SpeedBoostModule = loadModule("https://raw.githubusercontent.com/leshk1902
 local AntiEffectsModule = loadModule("https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/1")
 local ESPModule = loadModule("https://raw.githubusercontent.com/leshk19029/sphirit/refs/heads/main/esp")
 
--- Переменные для хранения состояния
-local speedBoostEnabled = false
-local currentSpeed = 25
-
 -- Создаем вкладку Main
 local mainTab = window:CreateCategory("Main")
 
@@ -31,26 +27,19 @@ local movementSection = mainTab:CreateSection("Movement")
 local playerSection = mainTab:CreateSection("Player")
 local visualSection = mainTab:CreateSection("Visual")
 
--- Speed Boost - исправленная реализация
+-- Speed Boost
 if SpeedBoostModule then
     -- Toggle для Speed Boost
     movementSection:Create("Toggle", "Speed Boost", function(state)
-        speedBoostEnabled = state
-        if state then
-            -- Включаем speed boost с текущим значением
-            SpeedBoostModule(currentSpeed)
-        else
-            -- Отключаем speed boost (устанавливаем нормальную скорость)
-            SpeedBoostModule(16) -- Стандартная скорость в большинстве игр
+        if SpeedBoostModule.toggleSpeedBoost then
+            SpeedBoostModule.toggleSpeedBoost(state)
         end
     end, {default = false})
     
     -- Slider для Speed Value
     movementSection:Create("Slider", "Speed Value", function(value)
-        currentSpeed = value
-        if speedBoostEnabled then
-            -- Обновляем скорость, если boost включен
-            SpeedBoostModule(value)
+        if SpeedBoostModule.setSpeed then
+            SpeedBoostModule.setSpeed(value)
         end
     end, {min = 1, max = 45, default = 25, precise = false})
 else
