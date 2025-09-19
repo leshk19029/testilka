@@ -1,26 +1,107 @@
-local Zypher = loadstring(game:HttpGet('https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/library'))()
 
--- Create the UI
-local ui = Zypher.new("My Menu", Enum.KeyCode.RightShift, Color3.fromRGB(40, 40, 40))
+local Library = loadstring(game:HttpGet('https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/library'))()
 
--- Create Main tab
-local mainTab = ui:CreateTab("Main")
+-- Создаем главное меню
+local Main = Library:CreateMain({
+    projName = "MyMenu",
+    Resizable = true,
+    MinSize = UDim2.new(0, 600, 0, 400),
+    MaxSize = UDim2.new(0, 1000, 0, 800)
+})
 
--- Create Anti-Effects toggle, enabled by default
-local antiEffectsToggle = ui:CreateToggle(mainTab, "Anti-Effects", true, function(value)
-    print("Anti-Effects is now: " .. tostring(value))
-    -- Add your Anti-Effects logic here
-    if value then
-        -- Code to disable effects (e.g., remove screen effects, post-processing, etc.)
-        -- Example: game.Lighting.ColorCorrection.Enabled = false
-    else
-        -- Code to enable effects
-        -- Example: game.Lighting.ColorCorrection.Enabled = true
-    end
+-- Создаем категории
+local CombatTab = Main:CreateCategory("Combat")
+local VisualsTab = Main:CreateCategory("Visuals")
+local MovementTab = Main:CreateCategory("Movement")
+local MiscTab = Main:CreateCategory("Misc")
+
+-- Секция для боевых функций
+local AimSection = CombatTab:CreateSection("Aim Assistance")
+
+AimSection:Create("Toggle", "Aimbot", function(state)
+    print("Aimbot:", state)
+end, {default = false})
+
+AimSection:Create("Slider", "FOV Size", function(value)
+    print("FOV Size:", value)
+end, {min = 10, max = 360, default = 120, precise = true})
+
+AimSection:Create("KeyBind", "Aim Key", function(key)
+    print("Aim Key:", key)
+end, {default = Enum.KeyCode.E})
+
+-- Секция для визуальных функций
+local ESPsection = VisualsTab:CreateSection("ESP")
+
+ESPsection:Create("Toggle", "Box ESP", function(state)
+    print("Box ESP:", state)
 end)
 
--- Optional: Add a label for context
-ui:CreateLabel(mainTab, "Toggle Anti-Effects to disable visual effects")
+ESPsection:Create("Toggle", "Name ESP", function(state)
+    print("Name ESP:", state)
+end)
 
--- Show the UI immediately
-ui:Toggle()
+ESPsection:Create("ColorPicker", "ESP Color", function(color)
+    print("ESP Color:", color)
+end, {default = Color3.fromRGB(255, 0, 0)})
+
+-- Секция для движения
+local SpeedSection = MovementTab:CreateSection("Speed")
+
+SpeedSection:Create("Toggle", "Speed Hack", function(state)
+    print("Speed Hack:", state)
+end)
+
+SpeedSection:Create("Slider", "Speed Multiplier", function(value)
+    print("Speed Multiplier:", value)
+end, {min = 1, max = 10, default = 2})
+
+-- Секция для разного
+local AutoFarmSection = MiscTab:CreateSection("Auto Farm")
+
+AutoFarmSection:Create("Toggle", "Auto Collect", function(state)
+    print("Auto Collect:", state)
+end)
+
+AutoFarmSection:Create("Dropdown", "Select Item", function(selected)
+    print("Selected Item:", selected)
+end, {
+    options = {"Coins", "Gems", "Wood", "Stone"},
+    default = "Coins"
+})
+
+AutoFarmSection:Create("Button", "Start Farming", function()
+    print("Farming started!")
+end, {animated = true})
+
+-- Секция с настройками игроков
+local PlayerSection = MiscTab:CreateSection("Player List")
+
+PlayerSection:Create("Dropdown", "Select Player", function(selected)
+    print("Selected Player:", selected)
+end, {
+    playerlist = true,
+    search = true
+})
+
+PlayerSection:Create("Button", "Teleport to Player", function()
+    print("Teleporting...")
+end)
+
+-- Секция с информацией
+local InfoSection = MiscTab:CreateSection("Information")
+
+InfoSection:Create("TextLabel", "Welcome to My Menu!")
+InfoSection:Create("TextLabel", "Version: 1.0.0")
+InfoSection:Create("TextLabel", "Made with xTheAlex14's Library")
+
+-- Функция для изменения темы (пример)
+local function changeTheme()
+    Library:SetThemeColor("Background", Color3.fromRGB(30, 30, 40))
+    Library:SetThemeColor("TextColor", Color3.fromRGB(220, 220, 220))
+    Library:SetThemeColor("DarkContrast", Color3.fromRGB(25, 25, 35))
+end
+
+-- Добавляем кнопку для смены темы
+local SettingsSection = MiscTab:CreateSection("Settings")
+SettingsSection:Create("Button", "Change Theme", changeTheme)
