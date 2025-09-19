@@ -1,78 +1,50 @@
 -- Загрузка вашей библиотеки
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/library"))()
+local Zypher = loadstring(game:HttpGet("https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/library"))()
 
--- Создание главного окна
-local window = Library:CreateMain({
-    projName = "PURY"
-})
+-- Create the main UI
+local ui = Zypher.new("Sample Menu", Enum.KeyCode.RightShift, Color3.fromRGB(0, 120, 215))
 
--- Функция для загрузки модулей
-local function loadModule(url)
-    local success, result = pcall(function()
-        return loadstring(game:HttpGet(url))()
-    end)
-    return success and result or nil
-end
+-- Create tabs
+local mainTab = ui:CreateTab("Main")
+local settingsTab = ui:CreateTab("Settings")
+local infoTab = ui:CreateTab("Info")
 
--- Загружаем только рабочие модули
-local SpeedBoostModule = loadModule("https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/2")
-local AntiEffectsModule = loadModule("https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/1")
-local ESPModule = loadModule("https://raw.githubusercontent.com/leshk19029/sphirit/refs/heads/main/esp")
+-- Main Tab: Add buttons and toggles
+ui:CreateButton(mainTab, "Teleport to Center", function()
+    game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(0, 5, 0)
+end)
 
--- Создаем вкладку Main
-local mainTab = window:CreateCategory("Main")
-
--- Создаем секции
-local movementSection = mainTab:CreateSection("Movement")
-local playerSection = mainTab:CreateSection("Player")
-local visualSection = mainTab:CreateSection("Visual")
-
--- Speed Boost
-if SpeedBoostModule then
-    movementSection:Create("Toggle", "Speed Boost", function(state)
-        if SpeedBoostModule.toggleSpeedBoost then
-            SpeedBoostModule.toggleSpeedBoost(state)
-        end
-    end, {default = false})
-    
-    movementSection:Create("Slider", "Speed Value", function(value)
-        if SpeedBoostModule.setSpeed then
-            SpeedBoostModule.setSpeed(value)
-        end
-    end, {min = 1, max = 45, default = 25, precise = false})
-else
-    warn("Speed Boost module not loaded")
-end
-
--- Anti Effects
-if AntiEffectsModule then
-    playerSection:Create("Toggle", "Anti Effects", function(state)
-        if AntiEffectsModule.toggleAntiEffects then
-            AntiEffectsModule.toggleAntiEffects(state)
-        end
-    end, {default = false})
-else
-    warn("Anti Effects module not loaded")
-end
-
--- ESP
-if ESPModule then
-    visualSection:Create("Toggle", "ESP", function(state)
-        if ESPModule.ToggleAll then
-            ESPModule.ToggleAll(state)
-        end
-    end, {default = false})
-else
-    warn("ESP module not loaded")
-end
-
--- Hotkey для открытия/закрытия
-UIS.InputBegan:Connect(function(input)
-    if input.KeyCode == Enum.KeyCode.LeftControl then
-        window.Motherframe.Visible = not window.Motherframe.Visible
+local speedToggle = ui:CreateToggle(mainTab, "Speed Boost", false, function(value)
+    local player = game.Players.LocalPlayer
+    if player.Character and player.Character:FindFirstChild("Humanoid") then
+        player.Character.Humanoid.WalkSpeed = value and 32 or 16
     end
 end)
 
-print("PURY Menu Loaded!")
+ui:CreateSlider(mainTab, "Jump Power", 50, 200, 50, function(value)
+    local player = game.Players.LocalPlayer
+    if player.Character and player.Character:FindFirstChild("Humanoid") then
+        player.Character.Humanoid.JumpPower = value
+    end
+end)
 
-это мое меню, анализируй код
+-- Settings Tab: Add settings controls
+ui:CreateLabel(settingsTab, "Game Settings")
+
+ui:CreateSlider(settingsTab, "Brightness", 0, 10, 0, function(value)
+    game.Lighting.Brightness = value
+end)
+
+ui:CreateToggle(settingsTab, "Fullbright", false, function(value)
+    game.Lighting.GlobalShadows = not value
+end)
+
+-- Info Tab: Add information
+ui:CreateLabel(infoTab, "Game Information")
+ui:CreateLabel(infoTab, "Created by: Your Name")
+ui:CreateLabel(infoTab, "Version: 1.0.0")
+ui:CreateButton(infoTab, "Print Credits", function()
+    print("Menu created using Zypher UI Library!")
+end)
+
+return ui
