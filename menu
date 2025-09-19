@@ -1,0 +1,169 @@
+-- Загрузка вашей библиотеки
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/your-username/your-repo/main/library.lua"))()
+
+-- Создание главного окна
+local window = Library:CreateMain({
+    projName = "PURY",
+    Resizable = true,
+    MinSize = UDim2.new(0, 600, 0, 400),
+    MaxSize = UDim2.new(0, 1000, 0, 800)
+})
+
+-- Функция для загрузки модулей с GitHub
+local function loadModule(url)
+    local success, result = pcall(function()
+        return loadstring(game:HttpGet(url))()
+    end)
+    if success then
+        return result
+    else
+        warn("Failed to load module from: " .. url)
+        return nil
+    end
+end
+
+-- Загружаем модули с GitHub
+local SpeedBoostModule = loadModule("https://raw.githubusercontent.com/leshk19029/sphirit/refs/heads/main/1")
+local AntiEffectsModule = loadModule("https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/2")
+local ESPModule = loadModule("https://raw.githubusercontent.com/leshk19029/sphirit/refs/heads/main/esp")
+local ControlPlayerModule = loadModule("https://raw.githubusercontent.com/leshk19029/sphirit/refs/heads/main/3")
+
+-- Создаем вкладку Main
+local mainTab = window:CreateCategory("Main")
+
+-- Создаем секции
+local movementSection = mainTab:CreateSection("Movement")
+local visualSection = mainTab:CreateSection("Visual")
+local playerSection = mainTab:CreateSection("Player")
+
+-- Переменные для управления функциями
+local speedEnabled = false
+local antiEffectsEnabled = false
+local espEnabled = false
+local controlPlayerEnabled = false
+
+-- Speed Boost
+if SpeedBoostModule then
+    local speedToggle = movementSection:Create("Toggle", "Speed Boost", function(state)
+        speedEnabled = state
+        if SpeedBoostModule.toggleSpeedBoost then
+            SpeedBoostModule.toggleSpeedBoost(state)
+        end
+    end, {default = false})
+
+    local speedSlider = movementSection:Create("Slider", "Speed Value", function(value)
+        if SpeedBoostModule.setSpeed then
+            SpeedBoostModule.setSpeed(value)
+        end
+    end, {min = 1, max = 45, default = 25, precise = false})
+else
+    warn("Speed Boost module not loaded")
+end
+
+-- Anti Effects
+if AntiEffectsModule then
+    local antiEffectsToggle = playerSection:Create("Toggle", "Anti Effects", function(state)
+        antiEffectsEnabled = state
+        if AntiEffectsModule.toggleAntiEffects then
+            AntiEffectsModule.toggleAntiEffects(state)
+        end
+    end, {default = false})
+else
+    warn("Anti Effects module not loaded")
+end
+
+-- ESP
+if ESPModule then
+    local espToggle = visualSection:Create("Toggle", "ESP", function(state)
+        espEnabled = state
+        if ESPModule.ToggleAll then
+            ESPModule.ToggleAll(state)
+        end
+    end, {default = false})
+else
+    warn("ESP module not loaded")
+end
+
+-- Control Player
+if ControlPlayerModule then
+    local controlToggle = playerSection:Create("Toggle", "Control Player", function(state)
+        controlPlayerEnabled = state
+        if ControlPlayerModule.toggleControlPlayer then
+            ControlPlayerModule.toggleControlPlayer(state)
+        end
+    end, {default = false})
+else
+    warn("Control Player module not loaded")
+end
+
+-- Создаем вкладку Settings
+local settingsTab = window:CreateCategory("Settings")
+local configSection = settingsTab:CreateSection("Configuration")
+
+-- Кнопка для уведомления
+local notifyBtn = configSection:Create("Button", "Check Modules", function()
+    local loadedModules = 0
+    if SpeedBoostModule then loadedModules = loadedModules + 1 end
+    if AntiEffectsModule then loadedModules = loadedModules + 1 end
+    if ESPModule then loadedModules = loadedModules + 1 end
+    if ControlPlayerModule then loadedModules = loadedModules + 1 end
+    
+    -- Создаем простую текстовую метку для уведомления
+    local notification = Instance.new("TextLabel")
+    notification.Name = "ModuleNotification"
+    notification.Text = "Loaded "..loadedModules.."/4 modules from GitHub"
+    notification.Size = UDim2.new(0, 200, 0, 50)
+    notification.Position = UDim2.new(0.5, -100, 0.1, 0)
+    notification.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    notification.TextColor3 = Color3.fromRGB(255, 255, 255)
+    notification.Font = Enum.Font.GothamBold
+    notification.TextSize = 14
+    notification.Parent = window.Motherframe
+    
+    -- Автоматическое скрытие через 5 секунд
+    task.delay(5, function()
+        if notification and notification.Parent then
+            notification:Destroy()
+        end
+    end)
+end)
+
+-- Keybind для открытия/закрытия меню
+local uiToggleKey = Enum.KeyCode.LeftControl
+
+UIS.InputBegan:Connect(function(input)
+    if input.KeyCode == uiToggleKey then
+        window.Motherframe.Visible = not window.Motherframe.Visible
+    end
+end)
+
+-- Установка темы (синий акцент как в примере)
+Library:SetThemeColor("Background", Color3.fromRGB(46, 46, 54))
+Library:SetThemeColor("TextColor", Color3.fromRGB(255, 255, 255))
+
+-- Уведомление о успешной загрузке при старте
+task.spawn(function()
+    wait(2)
+    local loadedModules = 0
+    if SpeedBoostModule then loadedModules = loadedModules + 1 end
+    if AntiEffectsModule then loadedModules = loadedModules + 1 end
+    if ESPModule then loadedModules = loadedModules + 1 end
+    if ControlPlayerModule then loadedModules = loadedModules + 1 end
+    
+    local notification = Instance.new("TextLabel")
+    notification.Name = "StartupNotification"
+    notification.Text = "PURY Loaded - "..loadedModules.."/4 modules"
+    notification.Size = UDim2.new(0, 250, 0, 40)
+    notification.Position = UDim2.new(0.5, -125, 0.1, 0)
+    notification.BackgroundColor3 = Color3.fromRGB(44, 120, 224)
+    notification.TextColor3 = Color3.fromRGB(255, 255, 255)
+    notification.Font = Enum.Font.GothamBold
+    notification.TextSize = 16
+    notification.Parent = window.Motherframe
+    
+    task.delay(4, function()
+        if notification and notification.Parent then
+            notification:Destroy()
+        end
+    end)
+end)
