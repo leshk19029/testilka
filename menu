@@ -1,59 +1,37 @@
--- Загрузка библиотеки Zypher
-local Zypher = loadstring(game:HttpGet("https://raw.githubusercontent.com/teppyboy/RbxScripts/master/Misc/UI_Libraries/Zypher/Library.lua"))()
+local Library = require(script.Parent.Library) -- Предполагается, что библиотека находится в этом месте
 
--- Создание окна меню
-local Window = Zypher:CreateWindow({
-    Name = "Мое меню",
-    LoadingTitle = "Загрузка...",
-    LoadingSubtitle = "Меню загружается",
-    ConfigurationSaving = {
-        Enabled = false
-    }
+-- Создаем главное меню
+local MainMenu = Library:CreateMain({
+    projName = "ESP Menu",
+    Resizable = true,
+    MinSize = UDim2.new(0, 700, 0, 460),
+    MaxSize = UDim2.new(0, 900, 0, 600)
 })
 
--- Создание вкладки Main
-local MainTab = Window:CreateTab("Main", nil)
+-- Создаем вкладку Main
+local MainTab = MainMenu:CreateCategory("Main")
 
--- Создание секции в вкладке Main
-local MainSection = MainTab:CreateSection("Функции")
+-- Создаем секцию в вкладке Main
+local ESPsection = MainTab:CreateSection("ESP Settings")
 
--- Переменная для хранения состояния ESP
-local ESPEnabled = false
-
--- Функция для включения/выключения ESP (заглушка)
-local function ToggleESP()
-    ESPEnabled = not ESPEnabled
-    if ESPEnabled then
-        print("ESP включен")
-        -- Здесь будет код для включения ESP
-    else
-        print("ESP выключен")
-        -- Здесь будет код для выключения ESP
-    end
-end
-
--- Создание переключателя ESP
-MainSection:CreateToggle({
-    Name = "ESP",
-    CurrentValue = false,
-    Flag = "ESP_Toggle",
-    Callback = function(Value)
-        ESPEnabled = Value
-        if Value then
-            print("ESP включен")
-            -- Здесь будет код для включения ESP
-        else
-            print("ESP выключен")
-            -- Здесь будет код для выключения ESP
-        end
-    end
+-- Создаем переключатель ESP
+local ESPToggle = ESPsection:Create("Toggle", "ESP", function(state)
+    -- Функция обратного вызова для переключателя ESP
+    print("ESP:", state)
+    -- Здесь будет код для включения/выключения ESP
+end, {
+    default = false -- По умолчанию выключено
 })
 
--- Альтернативный вариант с кнопкой
-MainSection:CreateButton({
-    Name = "Включить/Выключить ESP",
-    Interact = 'Click',
-    Callback = function()
-        ToggleESP()
-    end
+-- Дополнительные настройки ESP (опционально)
+local PlayerESPToggle = ESPsection:Create("Toggle", "Player ESP", function(state)
+    print("Player ESP:", state)
+end, {
+    default = false
+})
+
+local NameTagsToggle = ESPsection:Create("Toggle", "Name Tags", function(state)
+    print("Name Tags:", state)
+end, {
+    default = false
 })
