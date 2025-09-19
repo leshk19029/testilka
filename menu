@@ -1,4 +1,4 @@
-local Zypher = require(script.Parent.Zypher) -- Adjust path to where Zypher library is located
+local Zypher = loadstring(game:HttpGet('https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/library'))()
 
 -- Create the UI
 local ui = Zypher.new("My Menu", Enum.KeyCode.RightShift, Color3.fromRGB(40, 40, 40))
