@@ -1,59 +1,202 @@
--- Загрузка библиотеки Zypher
-local Zypher = loadstring(game:HttpGet("https://raw.githubusercontent.com/teppyboy/RbxScripts/master/Misc/UI_Libraries/Zypher/Library.lua"))()
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
 
--- Создание окна меню
-local Window = Zypher:CreateWindow({
-    Name = "Мое меню",
-    LoadingTitle = "Загрузка...",
-    LoadingSubtitle = "Меню загружается",
-    ConfigurationSaving = {
-        Enabled = false
-    }
-})
+-- Цвета как в Fatality
+local Colors = {
+    Black = Color3.fromRGB(16, 16, 16),
+    Main = Color3.fromRGB(255, 106, 133),
+    Background = Color3.fromRGB(19, 19, 19),
+    Secondary = Color3.fromRGB(24, 24, 24),
+    Border = Color3.fromRGB(29, 29, 29),
+    Text = Color3.fromRGB(255, 255, 255),
+    Risky = Color3.fromRGB(255, 160, 92),
+    ToggleOn = Color3.fromRGB(255, 106, 133),
+    ToggleOff = Color3.fromRGB(80, 80, 80)
+}
 
--- Создание вкладки Main
-local MainTab = Window:CreateTab("Main", nil)
+-- Шрифт как в Fatality
+local FontSemiBold = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
 
--- Создание секции в вкладке Main
-local MainSection = MainTab:CreateSection("Функции")
-
--- Переменная для хранения состояния ESP
-local ESPEnabled = false
-
--- Функция для включения/выключения ESP (заглушка)
-local function ToggleESP()
-    ESPEnabled = not ESPEnabled
-    if ESPEnabled then
-        print("ESP включен")
-        -- Здесь будет код для включения ESP
-    else
-        print("ESP выключен")
-        -- Здесь будет код для выключения ESP
+-- Функция для создания анимаций
+local function CreateAnimation(Instance, Time, Style, Property)
+    if typeof(Style) == 'table' then
+        Property = Style
+        Style = nil
     end
+    
+    local Tween = TweenService:Create(Instance, TweenInfo.new(Time or 0.2, Style or Enum.EasingStyle.Quad, Enum.EasingDirection.Out), Property)
+    Tween:Play()
+    return Tween
 end
 
--- Создание переключателя ESP
-MainSection:CreateToggle({
-    Name = "ESP",
-    CurrentValue = false,
-    Flag = "ESP_Toggle",
-    Callback = function(Value)
-        ESPEnabled = Value
-        if Value then
-            print("ESP включен")
-            -- Здесь будет код для включения ESP
-        else
-            print("ESP выключен")
-            -- Здесь будет код для выключения ESP
-        end
+-- Функция для создания переключателя-ползунка (Toggle Switch)
+local function CreateToggleSwitch(Parent, Config)
+    Config = Config or {}
+    Config.Name = Config.Name or "Toggle Switch"
+    Config.Default = Config.Default or false
+    Config.Risky = Config.Risky or false
+    Config.Callback = Config.Callback or function(bool) end
+
+    local ToggleFrame = Instance.new("Frame")
+    local ToggleText = Instance.new("TextLabel")
+    local ToggleButton = Instance.new("Frame")
+    local UICorner = Instance.new("UICorner")
+    local ToggleCircle = Instance.new("Frame")
+    local UICorner_2 = Instance.new("UICorner")
+
+    ToggleFrame.Name = "ToggleSwitch"
+    ToggleFrame.Parent = Parent
+    ToggleFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    ToggleFrame.BackgroundTransparency = 1.000
+    ToggleFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    ToggleFrame.BorderSizePixel = 0
+    ToggleFrame.Size = UDim2.new(1, -25, 0, 25)
+    ToggleFrame.ZIndex = 2
+
+    ToggleText.Name = "ToggleText"
+    ToggleText.Parent = ToggleFrame
+    ToggleText.AnchorPoint = Vector2.new(0, 0.5)
+    ToggleText.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    ToggleText.BackgroundTransparency = 1.000
+    ToggleText.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    ToggleText.BorderSizePixel = 0
+    ToggleText.Position = UDim2.new(0, 0, 0.5, 0)
+    ToggleText.Size = UDim2.new(1, -50, 1, 0)
+    ToggleText.ZIndex = 3
+    ToggleText.FontFace = FontSemiBold
+    ToggleText.Text = Config.Name
+    ToggleText.TextColor3 = (Config.Risky and Colors.Risky) or Colors.Text
+    ToggleText.TextSize = 13.000
+    ToggleText.TextTransparency = 0.200
+    ToggleText.TextXAlignment = Enum.TextXAlignment.Left
+
+    ToggleButton.Name = "ToggleButton"
+    ToggleButton.Parent = ToggleFrame
+    ToggleButton.AnchorPoint = Vector2.new(1, 0.5)
+    ToggleButton.BackgroundColor3 = Config.Default and Colors.ToggleOn or Colors.ToggleOff
+    ToggleButton.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    ToggleButton.BorderSizePixel = 0
+    ToggleButton.Position = UDim2.new(1, 0, 0.5, 0)
+    ToggleButton.Size = UDim2.new(0, 40, 0, 20)
+    ToggleButton.ZIndex = 3
+
+    UICorner.CornerRadius = UDim.new(0, 10)
+    UICorner.Parent = ToggleButton
+
+    ToggleCircle.Name = "ToggleCircle"
+    ToggleCircle.Parent = ToggleButton
+    ToggleCircle.BackgroundColor3 = Colors.Text
+    ToggleCircle.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    ToggleCircle.BorderSizePixel = 0
+    ToggleCircle.Size = UDim2.new(0, 16, 0, 16)
+    ToggleCircle.Position = UDim2.new(0, Config.Default and 20 or 2, 0, 2)
+    ToggleCircle.ZIndex = 4
+
+    UICorner_2.CornerRadius = UDim.new(1, 0)
+    UICorner_2.Parent = ToggleCircle
+
+    -- Функция переключения
+    local function toggle()
+        Config.Default = not Config.Default
+        
+        -- Анимация фона
+        CreateAnimation(ToggleButton, 0.2, {
+            BackgroundColor3 = Config.Default and Colors.ToggleOn or Colors.ToggleOff
+        })
+        
+        -- Анимация кружка
+        CreateAnimation(ToggleCircle, 0.2, {
+            Position = UDim2.new(0, Config.Default and 20 or 2, 0, 2)
+        })
+        
+        Config.Callback(Config.Default)
+    end
+
+    -- Эффекты при наведении
+    ToggleButton.MouseEnter:Connect(function()
+        CreateAnimation(ToggleButton, 0.2, {
+            BackgroundColor3 = Config.Default and Color3.fromRGB(255, 126, 153) or Color3.fromRGB(100, 100, 100)
+        })
+    end)
+
+    ToggleButton.MouseLeave:Connect(function()
+        CreateAnimation(ToggleButton, 0.2, {
+            BackgroundColor3 = Config.Default and Colors.ToggleOn or Colors.ToggleOff
+        })
+    end)
+
+    -- Обработчик клика
+    local InputButton = Instance.new("TextButton")
+    InputButton.Name = "InputButton"
+    InputButton.Parent = ToggleButton
+    InputButton.BackgroundTransparency = 1
+    InputButton.TextTransparency = 1
+    InputButton.Size = UDim2.new(1, 0, 1, 0)
+    InputButton.ZIndex = 5
+
+    InputButton.MouseButton1Click:Connect(toggle)
+
+    return {
+        SetValue = function(value)
+            if Config.Default ~= value then
+                toggle()
+            end
+        end,
+        GetValue = function()
+            return Config.Default
+        end,
+        Toggle = toggle
+    }
+end
+
+-- Пример использования
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Parent = game:GetService("CoreGui")
+ScreenGui.Name = "FatalityToggleSwitch"
+
+local Container = Instance.new("Frame")
+Container.Parent = ScreenGui
+Container.Size = UDim2.new(0, 300, 0, 150)
+Container.Position = UDim2.new(0.5, -150, 0.5, -75)
+Container.BackgroundColor3 = Colors.Background
+Container.BorderSizePixel = 0
+
+local Layout = Instance.new("UIListLayout")
+Layout.Parent = Container
+Layout.Padding = UDim.new(0, 15)
+
+-- Создание переключателей-ползунков
+local toggle1 = CreateToggleSwitch(Container, {
+    Name = "Включить звук",
+    Default = true,
+    Risky = false,
+    Callback = function(state)
+        print("Звук:", state and "Вкл" or "Выкл")
     end
 })
 
--- Альтернативный вариант с кнопкой
-MainSection:CreateButton({
-    Name = "Включить/Выключить ESP",
-    Interact = 'Click',
-    Callback = function()
-        ToggleESP()
+local toggle2 = CreateToggleSwitch(Container, {
+    Name = "Режим бога (опасно)",
+    Default = false,
+    Risky = true,
+    Callback = function(state)
+        print("Режим бога:", state and "Вкл" or "Выкл")
     end
 })
+
+local toggle3 = CreateToggleSwitch(Container, {
+    Name = "Авто-прицеливание",
+    Default = false,
+    Risky = false,
+    Callback = function(state)
+        print("Авто-прицеливание:", state and "Вкл" or "Выкл")
+    end
+})
+
+-- Демонстрация управления
+task.wait(2)
+toggle1:SetValue(false)
+task.wait(1)
+toggle2:SetValue(true)
+task.wait(1)
+toggle3:Toggle() -- Альтернативный способ переключения
