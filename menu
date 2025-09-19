@@ -1,35 +1,55 @@
-local Lib = loadstring(game:HttpGet('https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/library'))()
+local CustomUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/library"))()
 
-local Window = Lib:CreateWindow({
-    Title = "My UI",
-    Size = UDim2.new(0, 600, 0, 400),
-    Keybind = Enum.KeyCode.Insert
+-- Создание интерфейса
+local ui = CustomUI.new({
+    Name = "Мой Интерфейс",
+    Size = UDim2.new(0, 700, 0, 500),
+    Position = UDim2.new(0.5, 0, 0.5, 0)
 })
 
-local Tab = Window:AddTab("Settings")
+-- Добавление вкладок
+local mainTab = ui:AddTab("Основное", "settings")
+local settingsTab = ui:AddTab("Настройки", "sliders")
+local infoTab = ui:AddTab("Информация", "info")
 
-local Toggle = Tab:AddToggle({
-    Name = "Enable Feature",
-    Default = true,
-    Callback = function(val) print("Toggled:", val) end
+-- Добавление секций на первую вкладку
+local combatSection = ui:AddSection(mainTab, "Боевые функции")
+local movementSection = ui:AddSection(mainTab, "Движение")
+
+-- Добавление элементов управления
+ui:AddToggle(combatSection, {
+    Text = "Аимбот",
+    Default = false,
+    Callback = function(value)
+        print("Аимбот:", value)
+    end
 })
 
-local Slider = Tab:AddSlider({
-    Name = "Volume",
+ui:AddSlider(combatSection, {
+    Text = "Сила аимбота",
     Min = 0,
     Max = 100,
     Default = 50,
-    Callback = function(val) print("Slider:", val) end
+    Callback = function(value)
+        print("Сила аимбота:", value)
+    end
 })
 
-local Button = Tab:AddButton({
-    Name = "Click Me",
-    Callback = function() print("Clicked!") end
+ui:AddButton(movementSection, {
+    Text = "Включить полет",
+    Callback = function()
+        print("Полёт активирован")
+    end
 })
 
-local Dropdown = Tab:AddDropdown({
-    Name = "Mode",
-    Options = {"Easy", "Normal", "Hard"},
-    Default = "Easy",
-    Callback = function(val) print("Selected:", val) end
+ui:AddDropdown(movementSection, {
+    Text = "Скорость движения",
+    Options = {"Медленно", "Нормально", "Быстро", "Очень быстро"},
+    Default = "Нормально",
+    Callback = function(value)
+        print("Скорость:", value)
+    end
 })
+
+-- Показать интерфейс
+ui:Toggle(true)
