@@ -1,446 +1,385 @@
--- MyCustomUI Library
-local MyCustomUI = {}
-MyCustomUI.__index = MyCustomUI
+-- Библиотека UI компонентов с функцией перетаскивания
+local Library = {}
 
--- Сервисы
-local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
-
--- Цветовая схема
-MyCustomUI.Colors = {
-    Primary = Color3.fromRGB(65, 105, 225), -- Royal Blue
-    Secondary = Color3.fromRGB(50, 50, 60),
-    Background = Color3.fromRGB(25, 25, 35),
-    Text = Color3.fromRGB(240, 240, 240),
-    Accent = Color3.fromRGB(255, 105, 180), -- Hot Pink
-    Success = Color3.fromRGB(50, 205, 50),
-    Warning = Color3.fromRGB(255, 165, 0),
-    Error = Color3.fromRGB(220, 20, 60)
+-- Цвета библиотеки
+Library.Colors = {
+    Background = Color3.fromRGB(40, 40, 40),
+    Secondary = Color3.fromRGB(30, 30, 30),
+    Accent = Color3.fromRGB(25, 25, 25),
+    Text = Color3.fromRGB(255, 255, 255),
+    Button = Color3.fromRGB(60, 60, 60),
+    ButtonHover = Color3.fromRGB(70, 70, 70),
+    ToggleOn = Color3.fromRGB(0, 170, 255),
+    ToggleOff = Color3.fromRGB(80, 80, 80),
+    Border = Color3.fromRGB(60, 60, 60)
 }
 
--- Создание окна
-function MyCustomUI:CreateWindow(options)
-    local window = {}
-    setmetatable(window, MyCustomUI)
+-- Функция перетаскивания для окон и элементов
+function Library:Draggable(frame, handle)
+    handle = handle or frame
     
-    options = options or {}
-    window.Name = options.Name or "Custom UI"
-    window.Keybind = options.Keybind or Enum.KeyCode.RightShift
-    window.Visible = false
-    
-    -- Создание GUI
-    window.ScreenGui = Instance.new("ScreenGui")
-    window.ScreenGui.Name = window.Name
-    window.ScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
-    window.ScreenGui.ResetOnSpawn = false
-    
-    -- Основной фрейм
-    window.MainFrame = Instance.new("Frame")
-    window.MainFrame.Name = "MainFrame"
-    window.MainFrame.Size = UDim2.new(0, 450, 0, 500)
-    window.MainFrame.Position = UDim2.new(0.5, -225, 0.5, -250)
-    window.MainFrame.BackgroundColor3 = MyCustomUI.Colors.Background
-    window.MainFrame.BorderSizePixel = 0
-    window.MainFrame.ClipsDescendants = true
-    window.MainFrame.Parent = window.ScreenGui
-    
-    -- Скругление углов
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
-    corner.Parent = window.MainFrame
-    
-    -- Тень
-    local shadow = Instance.new("ImageLabel")
-    shadow.Name = "Shadow"
-    shadow.Size = UDim2.new(1, 10, 1, 10)
-    shadow.Position = UDim2.new(0, -5, 0, -5)
-    shadow.BackgroundTransparency = 1
-    shadow.Image = "rbxassetid://1316045217"
-    shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
-    shadow.ImageTransparency = 0.8
-    shadow.ScaleType = Enum.ScaleType.Slice
-    shadow.SliceCenter = Rect.new(10, 10, 118, 118)
-    shadow.Parent = window.MainFrame
-    shadow.ZIndex = -1
-    
-    -- Заголовок
-    window.TitleFrame = Instance.new("Frame")
-    window.TitleFrame.Name = "TitleFrame"
-    window.TitleFrame.Size = UDim2.new(1, 0, 0, 40)
-    window.TitleFrame.Position = UDim2.new(0, 0, 0, 0)
-    window.TitleFrame.BackgroundColor3 = MyCustomUI.Colors.Secondary
-    window.TitleFrame.BorderSizePixel = 0
-    window.TitleFrame.Parent = window.MainFrame
-    
-    local titleCorner = Instance.new("UICorner")
-    titleCorner.CornerRadius = UDim.new(0, 8)
-    titleCorner.Parent = window.TitleFrame
-    
-    window.TitleLabel = Instance.new("TextLabel")
-    window.TitleLabel.Name = "TitleLabel"
-    window.TitleLabel.Size = UDim2.new(1, -80, 1, 0)
-    window.TitleLabel.Position = UDim2.new(0, 15, 0, 0)
-    window.TitleLabel.BackgroundTransparency = 1
-    window.TitleLabel.Text = window.Name
-    window.TitleLabel.TextColor3 = MyCustomUI.Colors.Text
-    window.TitleLabel.TextSize = 16
-    window.TitleLabel.Font = Enum.Font.GothamBold
-    window.TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
-    window.TitleLabel.Parent = window.TitleFrame
-    
-    -- Кнопка закрытия
-    window.CloseButton = Instance.new("TextButton")
-    window.CloseButton.Name = "CloseButton"
-    window.CloseButton.Size = UDim2.new(0, 30, 0, 30)
-    window.CloseButton.Position = UDim2.new(1, -40, 0, 5)
-    window.CloseButton.BackgroundColor3 = Color3.fromRGB(220, 20, 60)
-    window.CloseButton.Text = "X"
-    window.CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    window.CloseButton.TextSize = 14
-    window.CloseButton.Font = Enum.Font.GothamBold
-    window.CloseButton.Parent = window.TitleFrame
-    
-    local closeCorner = Instance.new("UICorner")
-    closeCorner.CornerRadius = UDim.new(0, 6)
-    closeCorner.Parent = window.CloseButton
-    
-    -- Контент
-    window.ContentFrame = Instance.new("ScrollingFrame")
-    window.ContentFrame.Name = "ContentFrame"
-    window.ContentFrame.Size = UDim2.new(1, -20, 1, -60)
-    window.ContentFrame.Position = UDim2.new(0, 10, 0, 50)
-    window.ContentFrame.BackgroundTransparency = 1
-    window.ContentFrame.BorderSizePixel = 0
-    window.ContentFrame.ScrollBarThickness = 4
-    window.ContentFrame.ScrollBarImageColor3 = MyCustomUI.Colors.Primary
-    window.ContentFrame.Parent = window.MainFrame
-    
-    window.UIListLayout = Instance.new("UIListLayout")
-    window.UIListLayout.Parent = window.ContentFrame
-    window.UIListLayout.Padding = UDim.new(0, 10)
-    
-    -- Обработчики событий
-    window.CloseButton.MouseButton1Click:Connect(function()
-        window:Toggle()
-    end)
-    
-    UserInputService.InputBegan:Connect(function(input)
-        if input.KeyCode == window.Keybind then
-            window:Toggle()
+    local dragging = false
+    local dragInput, dragStart, startPos
+
+    -- Обработчик для мыши
+    handle.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+            
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
         end
     end)
-    
-    return window
-end
 
--- Переключение видимости
-function MyCustomUI:Toggle()
-    self.Visible = not self.Visible
-    self.MainFrame.Visible = self.Visible
-end
-
--- Создание секции
-function MyCustomUI:CreateSection(name)
-    local section = {}
-    
-    section.Frame = Instance.new("Frame")
-    section.Frame.Name = "Section_" .. name
-    section.Frame.Size = UDim2.new(1, 0, 0, 0)
-    section.Frame.BackgroundTransparency = 1
-    section.Frame.Parent = self.ContentFrame
-    
-    section.UIListLayout = Instance.new("UIListLayout")
-    section.UIListLayout.Parent = section.Frame
-    section.UIListLayout.Padding = UDim.new(0, 8)
-    
-    -- Заголовок секции
-    section.TitleLabel = Instance.new("TextLabel")
-    section.TitleLabel.Name = "Title"
-    section.TitleLabel.Size = UDim2.new(1, 0, 0, 20)
-    section.TitleLabel.BackgroundTransparency = 1
-    section.TitleLabel.Text = name
-    section.TitleLabel.TextColor3 = MyCustomUI.Colors.Primary
-    section.TitleLabel.TextSize = 14
-    section.TitleLabel.Font = Enum.Font.GothamBold
-    section.TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
-    section.TitleLabel.Parent = section.Frame
-    
-    section.Elements = {}
-    
-    function section:UpdateSize()
-        local totalHeight = 30 -- Заголовок + отступы
-        for _, element in pairs(self.Elements) do
-            totalHeight += element.Size.Y.Offset + 8
+    -- Обработчик для касаний
+    handle.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
         end
-        self.Frame.Size = UDim2.new(1, 0, 0, totalHeight)
-    end
-    
-    return section
-end
-
--- Toggle элемент
-function MyCustomUI:CreateToggle(section, options)
-    local toggle = {}
-    options = options or {}
-    
-    toggle.Frame = Instance.new("Frame")
-    toggle.Frame.Name = "Toggle_" .. options.Name
-    toggle.Frame.Size = UDim2.new(1, 0, 0, 30)
-    toggle.Frame.BackgroundTransparency = 1
-    toggle.Frame.Parent = section.Frame
-    
-    toggle.Label = Instance.new("TextLabel")
-    toggle.Label.Name = "Label"
-    toggle.Label.Size = UDim2.new(0.7, 0, 1, 0)
-    toggle.Label.Position = UDim2.new(0, 0, 0, 0)
-    toggle.Label.BackgroundTransparency = 1
-    toggle.Label.Text = options.Name or "Toggle"
-    toggle.Label.TextColor3 = MyCustomUI.Colors.Text
-    toggle.Label.TextSize = 13
-    toggle.Label.Font = Enum.Font.Gotham
-    toggle.Label.TextXAlignment = Enum.TextXAlignment.Left
-    toggle.Label.Parent = toggle.Frame
-    
-    toggle.Button = Instance.new("TextButton")
-    toggle.Button.Name = "ToggleButton"
-    toggle.Button.Size = UDim2.new(0, 50, 0, 25)
-    toggle.Button.Position = UDim2.new(1, -50, 0, 2)
-    toggle.Button.BackgroundColor3 = MyCustomUI.Colors.Secondary
-    toggle.Button.Text = ""
-    toggle.Button.Parent = toggle.Frame
-    
-    local buttonCorner = Instance.new("UICorner")
-    buttonCorner.CornerRadius = UDim.new(0, 12)
-    buttonCorner.Parent = toggle.Button
-    
-    toggle.Switch = Instance.new("Frame")
-    toggle.Switch.Name = "Switch"
-    toggle.Switch.Size = UDim2.new(0, 21, 0, 21)
-    toggle.Switch.Position = UDim2.new(0, 2, 0, 2)
-    toggle.Switch.BackgroundColor3 = MyCustomUI.Colors.Text
-    toggle.Switch.Parent = toggle.Button
-    
-    local switchCorner = Instance.new("UICorner")
-    switchCorner.CornerRadius = UDim.new(0, 10)
-    switchCorner.Parent = toggle.Switch
-    
-    toggle.State = options.Default or false
-    toggle.Callback = options.Callback or function() end
-    
-    -- Анимация переключения
-    function toggle:SetState(state)
-        self.State = state
-        local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-        
-        if state then
-            local tween = TweenService:Create(self.Switch, tweenInfo, {
-                Position = UDim2.new(0, 27, 0, 2),
-                BackgroundColor3 = MyCustomUI.Colors.Success
-            })
-            tween:Play()
-            self.Button.BackgroundColor3 = MyCustomUI.Colors.Primary
-        else
-            local tween = TweenService:Create(self.Switch, tweenInfo, {
-                Position = UDim2.new(0, 2, 0, 2),
-                BackgroundColor3 = MyCustomUI.Colors.Text
-            })
-            tween:Play()
-            self.Button.BackgroundColor3 = MyCustomUI.Colors.Secondary
-        end
-        
-        self.Callback(state)
-    end
-    
-    toggle.Button.MouseButton1Click:Connect(function()
-        toggle:SetState(not toggle.State)
     end)
-    
-    toggle:SetState(toggle.State)
-    table.insert(section.Elements, toggle.Frame)
-    section:UpdateSize()
-    
-    return toggle
+
+    -- Обновление позиции
+    game:GetService("UserInputService").InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
 end
 
--- Button элемент
-function MyCustomUI:CreateButton(section, options)
-    local button = {}
-    options = options or {}
-    
-    button.Frame = Instance.new("Frame")
-    button.Frame.Name = "Button_" .. options.Name
-    button.Frame.Size = UDim2.new(1, 0, 0, 35)
-    button.Frame.BackgroundTransparency = 1
-    button.Frame.Parent = section.Frame
-    
-    button.Button = Instance.new("TextButton")
-    button.Button.Name = "MainButton"
-    button.Button.Size = UDim2.new(1, 0, 1, 0)
-    button.Button.BackgroundColor3 = MyCustomUI.Colors.Primary
-    button.Button.Text = options.Name or "Button"
-    button.Button.TextColor3 = MyCustomUI.Colors.Text
-    button.Button.TextSize = 13
-    button.Button.Font = Enum.Font.GothamBold
-    button.Button.Parent = button.Frame
-    
-    local buttonCorner = Instance.new("UICorner")
-    buttonCorner.CornerRadius = UDim.new(0, 6)
-    buttonCorner.Parent = button.Button
-    
-    button.Callback = options.Callback or function() end
-    
+-- Создание фрейма окна
+function Library:CreateWindow(name)
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = name
+    screenGui.Parent = game:GetService("CoreGui")
+    screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Name = "MainFrame"
+    mainFrame.Size = UDim2.new(0, 400, 0, 300)
+    mainFrame.Position = UDim2.new(0.5, -200, 0.5, -150)
+    mainFrame.BackgroundColor3 = Library.Colors.Background
+    mainFrame.BorderColor3 = Library.Colors.Border
+    mainFrame.BorderSizePixel = 1
+    mainFrame.Parent = screenGui
+
+    -- Заголовок окна
+    local titleBar = Instance.new("Frame")
+    titleBar.Name = "TitleBar"
+    titleBar.Size = UDim2.new(1, 0, 0, 30)
+    titleBar.BackgroundColor3 = Library.Colors.Secondary
+    titleBar.BorderSizePixel = 0
+    titleBar.Parent = mainFrame
+
+    local titleText = Instance.new("TextLabel")
+    titleText.Name = "Title"
+    titleText.Size = UDim2.new(1, -60, 1, 0)
+    titleText.Position = UDim2.new(0, 10, 0, 0)
+    titleText.BackgroundTransparency = 1
+    titleText.Text = name
+    titleText.TextColor3 = Library.Colors.Text
+    titleText.TextXAlignment = Enum.TextXAlignment.Left
+    titleText.Font = Enum.Font.Gotham
+    titleText.TextSize = 14
+    titleText.Parent = titleBar
+
+    -- Делаем окно перетаскиваемым за заголовок
+    Library:Draggable(mainFrame, titleBar)
+
+    -- Контейнер для элементов
+    local container = Instance.new("ScrollingFrame")
+    container.Name = "Container"
+    container.Size = UDim2.new(1, -20, 1, -50)
+    container.Position = UDim2.new(0, 10, 0, 40)
+    container.BackgroundTransparency = 1
+    container.BorderSizePixel = 0
+    container.ScrollBarThickness = 5
+    container.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    container.CanvasSize = UDim2.new(0, 0, 0, 0)
+    container.Parent = mainFrame
+
+    local layout = Instance.new("UIListLayout")
+    layout.Padding = UDim.new(0, 10)
+    layout.Parent = container
+
+    return {
+        ScreenGui = screenGui,
+        MainFrame = mainFrame,
+        Container = container,
+        TitleBar = titleBar
+    }
+end
+
+-- Создание кнопки
+function Library:CreateButton(parent, text, callback)
+    local button = Instance.new("TextButton")
+    button.Name = "Button"
+    button.Size = UDim2.new(1, 0, 0, 35)
+    button.BackgroundColor3 = Library.Colors.Button
+    button.BorderColor3 = Library.Colors.Border
+    button.BorderSizePixel = 1
+    button.Text = text
+    button.TextColor3 = Library.Colors.Text
+    button.Font = Enum.Font.Gotham
+    button.TextSize = 14
+    button.Parent = parent
+
     -- Эффекты при наведении
-    button.Button.MouseEnter:Connect(function()
-        local tween = TweenService:Create(button.Button, TweenInfo.new(0.2), {
-            BackgroundColor3 = Color3.fromRGB(
-                math.floor(MyCustomUI.Colors.Primary.R * 255 * 0.8),
-                math.floor(MyCustomUI.Colors.Primary.G * 255 * 0.8),
-                math.floor(MyCustomUI.Colors.Primary.B * 255 * 0.8)
-            )
-        })
-        tween:Play()
+    button.MouseEnter:Connect(function()
+        button.BackgroundColor3 = Library.Colors.ButtonHover
     end)
-    
-    button.Button.MouseLeave:Connect(function()
-        local tween = TweenService:Create(button.Button, TweenInfo.new(0.2), {
-            BackgroundColor3 = MyCustomUI.Colors.Primary
-        })
-        tween:Play()
+
+    button.MouseLeave:Connect(function()
+        button.BackgroundColor3 = Library.Colors.Button
     end)
-    
-    button.Button.MouseButton1Click:Connect(function()
-        button.Callback()
+
+    -- Обработчик клика
+    button.MouseButton1Click:Connect(function()
+        if callback then
+            callback()
+        end
     end)
-    
-    table.insert(section.Elements, button.Frame)
-    section:UpdateSize()
-    
+
     return button
 end
 
--- Slider элемент
-function MyCustomUI:CreateSlider(section, options)
-    local slider = {}
-    options = options or {}
-    
-    slider.Frame = Instance.new("Frame")
-    slider.Frame.Name = "Slider_" .. options.Name
-    slider.Frame.Size = UDim2.new(1, 0, 0, 60)
-    slider.Frame.BackgroundTransparency = 1
-    slider.Frame.Parent = section.Frame
-    
-    slider.Label = Instance.new("TextLabel")
-    slider.Label.Name = "Label"
-    slider.Label.Size = UDim2.new(1, 0, 0, 20)
-    slider.Label.BackgroundTransparency = 1
-    slider.Label.Text = options.Name or "Slider"
-    slider.Label.TextColor3 = MyCustomUI.Colors.Text
-    slider.Label.TextSize = 13
-    slider.Label.Font = Enum.Font.Gotham
-    slider.Label.TextXAlignment = Enum.TextXAlignment.Left
-    slider.Label.Parent = slider.Frame
-    
-    slider.ValueLabel = Instance.new("TextLabel")
-    slider.ValueLabel.Name = "ValueLabel"
-    slider.ValueLabel.Size = UDim2.new(0, 50, 0, 20)
-    slider.ValueLabel.Position = UDim2.new(1, -50, 0, 0)
-    slider.ValueLabel.BackgroundTransparency = 1
-    slider.ValueLabel.Text = tostring(options.Default or 50)
-    slider.ValueLabel.TextColor3 = MyCustomUI.Colors.Primary
-    slider.ValueLabel.TextSize = 13
-    slider.ValueLabel.Font = Enum.Font.GothamBold
-    slider.ValueLabel.TextXAlignment = Enum.TextXAlignment.Right
-    slider.ValueLabel.Parent = slider.Frame
-    
-    slider.Track = Instance.new("Frame")
-    slider.Track.Name = "Track"
-    slider.Track.Size = UDim2.new(1, 0, 0, 5)
-    slider.Track.Position = UDim2.new(0, 0, 0, 30)
-    slider.Track.BackgroundColor3 = MyCustomUI.Colors.Secondary
-    slider.Track.BorderSizePixel = 0
-    slider.Track.Parent = slider.Frame
-    
-    local trackCorner = Instance.new("UICorner")
-    trackCorner.CornerRadius = UDim.new(0, 3)
-    trackCorner.Parent = slider.Track
-    
-    slider.Fill = Instance.new("Frame")
-    slider.Fill.Name = "Fill"
-    slider.Fill.Size = UDim2.new(0, 0, 1, 0)
-    slider.Fill.BackgroundColor3 = MyCustomUI.Colors.Primary
-    slider.Fill.BorderSizePixel = 0
-    slider.Fill.Parent = slider.Track
-    
-    local fillCorner = Instance.new("UICorner")
-    fillCorner.CornerRadius = UDim.new(0, 3)
-    fillCorner.Parent = slider.Fill
-    
-    slider.Handle = Instance.new("TextButton")
-    slider.Handle.Name = "Handle"
-    slider.Handle.Size = UDim2.new(0, 15, 0, 15)
-    slider.Handle.Position = UDim2.new(0, -7, 0, -5)
-    slider.Handle.BackgroundColor3 = MyCustomUI.Colors.Accent
-    slider.Handle.Text = ""
-    slider.Handle.Parent = slider.Track
-    
-    local handleCorner = Instance.new("UICorner")
-    handleCorner.CornerRadius = UDim.new(0, 7)
-    handleCorner.Parent = slider.Handle
-    
-    slider.Min = options.Min or 0
-    slider.Max = options.Max or 100
-    slider.Default = options.Default or 50
-    slider.Value = slider.Default
-    slider.Callback = options.Callback or function() end
-    
-    function slider:SetValue(value)
-        value = math.clamp(value, self.Min, self.Max)
-        self.Value = value
+-- Создание переключателя (toggle)
+function Library:CreateToggle(parent, text, default, callback)
+    local toggleFrame = Instance.new("Frame")
+    toggleFrame.Name = "Toggle"
+    toggleFrame.Size = UDim2.new(1, 0, 0, 25)
+    toggleFrame.BackgroundTransparency = 1
+    toggleFrame.Parent = parent
+
+    local toggleButton = Instance.new("TextButton")
+    toggleButton.Name = "ToggleButton"
+    toggleButton.Size = UDim2.new(0, 40, 0, 20)
+    toggleButton.Position = UDim2.new(1, -40, 0, 0)
+    toggleButton.BackgroundColor3 = default and Library.Colors.ToggleOn or Library.Colors.ToggleOff
+    toggleButton.BorderColor3 = Library.Colors.Border
+    toggleButton.BorderSizePixel = 1
+    toggleButton.Text = ""
+    toggleButton.Parent = toggleFrame
+
+    local toggleCircle = Instance.new("Frame")
+    toggleCircle.Name = "ToggleCircle"
+    toggleCircle.Size = UDim2.new(0, 16, 0, 16)
+    toggleCircle.Position = UDim2.new(0, default and 20 or 2, 0, 2)
+    toggleCircle.BackgroundColor3 = Library.Colors.Text
+    toggleCircle.BorderSizePixel = 0
+    toggleCircle.Parent = toggleButton
+
+    local toggleText = Instance.new("TextLabel")
+    toggleText.Name = "ToggleText"
+    toggleText.Size = UDim2.new(1, -50, 1, 0)
+    toggleText.BackgroundTransparency = 1
+    toggleText.Text = text
+    toggleText.TextColor3 = Library.Colors.Text
+    toggleText.TextXAlignment = Enum.TextXAlignment.Left
+    toggleText.Font = Enum.Font.Gotham
+    toggleText.TextSize = 14
+    toggleText.Parent = toggleFrame
+
+    local isToggled = default
+
+    -- Функция переключения
+    local function toggle()
+        isToggled = not isToggled
+        toggleButton.BackgroundColor3 = isToggled and Library.Colors.ToggleOn or Library.Colors.ToggleOff
         
-        local percentage = (value - self.Min) / (self.Max - self.Min)
-        self.Fill.Size = UDim2.new(percentage, 0, 1, 0)
-        self.Handle.Position = UDim2.new(percentage, -7, 0, -5)
-        self.ValueLabel.Text = tostring(math.floor(value))
+        local tween = game:GetService("TweenService"):Create(
+            toggleCircle,
+            TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+            {Position = UDim2.new(0, isToggled and 20 or 2, 0, 2)}
+        )
+        tween:Play()
         
-        self.Callback(value)
+        if callback then
+            callback(isToggled)
+        end
     end
-    
-    -- Drag логика
+
+    toggleButton.MouseButton1Click:Connect(toggle)
+
+    return {
+        Frame = toggleFrame,
+        Set = function(self, value)
+            if isToggled ~= value then
+                toggle()
+            end
+        end,
+        Get = function(self)
+            return isToggled
+        end
+    }
+end
+
+-- Создание слайдера
+function Library:CreateSlider(parent, text, min, max, default, callback)
+    local sliderFrame = Instance.new("Frame")
+    sliderFrame.Name = "Slider"
+    sliderFrame.Size = UDim2.new(1, 0, 0, 50)
+    sliderFrame.BackgroundTransparency = 1
+    sliderFrame.Parent = parent
+
+    local sliderText = Instance.new("TextLabel")
+    sliderText.Name = "SliderText"
+    sliderText.Size = UDim2.new(1, 0, 0, 20)
+    sliderText.BackgroundTransparency = 1
+    sliderText.Text = text
+    sliderText.TextColor3 = Library.Colors.Text
+    sliderText.TextXAlignment = Enum.TextXAlignment.Left
+    sliderText.Font = Enum.Font.Gotham
+    sliderText.TextSize = 14
+    sliderText.Parent = sliderFrame
+
+    local valueText = Instance.new("TextLabel")
+    valueText.Name = "ValueText"
+    valueText.Size = UDim2.new(0, 50, 0, 20)
+    valueText.Position = UDim2.new(1, -50, 0, 0)
+    valueText.BackgroundTransparency = 1
+    valueText.Text = tostring(default)
+    valueText.TextColor3 = Library.Colors.Text
+    valueText.TextXAlignment = Enum.TextXAlignment.Right
+    valueText.Font = Enum.Font.Gotham
+    valueText.TextSize = 14
+    valueText.Parent = sliderFrame
+
+    local track = Instance.new("Frame")
+    track.Name = "Track"
+    track.Size = UDim2.new(1, 0, 0, 5)
+    track.Position = UDim2.new(0, 0, 0, 30)
+    track.BackgroundColor3 = Library.Colors.ToggleOff
+    track.BorderSizePixel = 0
+    track.Parent = sliderFrame
+
+    local fill = Instance.new("Frame")
+    fill.Name = "Fill"
+    fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
+    fill.BackgroundColor3 = Library.Colors.ToggleOn
+    fill.BorderSizePixel = 0
+    fill.Parent = track
+
+    local handle = Instance.new("TextButton")
+    handle.Name = "Handle"
+    handle.Size = UDim2.new(0, 15, 0, 15)
+    handle.Position = UDim2.new((default - min) / (max - min), -7, 0.5, -7)
+    handle.BackgroundColor3 = Library.Colors.Text
+    handle.BorderSizePixel = 0
+    handle.Text = ""
+    handle.Parent = track
+
     local dragging = false
-    
-    slider.Handle.MouseButton1Down:Connect(function()
-        dragging = true
+    local currentValue = default
+
+    -- Функция обновления слайдера
+    local function updateSlider(input)
+        local relativeX = (input.Position.X - track.AbsolutePosition.X) / track.AbsoluteSize.X
+        relativeX = math.clamp(relativeX, 0, 1)
+        
+        currentValue = math.floor(min + (max - min) * relativeX)
+        valueText.Text = tostring(currentValue)
+        fill.Size = UDim2.new(relativeX, 0, 1, 0)
+        handle.Position = UDim2.new(relativeX, -7, 0.5, -7)
+        
+        if callback then
+            callback(currentValue)
+        end
+    end
+
+    -- Обработчики для слайдера
+    handle.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            updateSlider(input)
+        end
     end)
-    
-    UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+
+    handle.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = false
         end
     end)
-    
-    slider.Track.MouseButton1Down:Connect(function(x, y)
-        local relativeX = x - slider.Track.AbsolutePosition.X
-        local percentage = math.clamp(relativeX / slider.Track.AbsoluteSize.X, 0, 1)
-        local value = slider.Min + percentage * (slider.Max - slider.Min)
-        slider:SetValue(value)
-    end)
-    
-    RunService.RenderStepped:Connect(function()
-        if dragging then
-            local mouse = UserInputService:GetMouseLocation()
-            local relativeX = mouse.X - slider.Track.AbsolutePosition.X
-            local percentage = math.clamp(relativeX / slider.Track.AbsoluteSize.X, 0, 1)
-            local value = slider.Min + percentage * (slider.Max - slider.Min)
-            slider:SetValue(value)
+
+    track.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            updateSlider(input)
         end
     end)
-    
-    slider:SetValue(slider.Default)
-    table.insert(section.Elements, slider.Frame)
-    section:UpdateSize()
-    
-    return slider
+
+    game:GetService("UserInputService").InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            updateSlider(input)
+        end
+    end)
+
+    return {
+        Frame = sliderFrame,
+        GetValue = function(self)
+            return currentValue
+        end,
+        SetValue = function(self, value)
+            value = math.clamp(value, min, max)
+            currentValue = value
+            valueText.Text = tostring(value)
+            local relativeX = (value - min) / (max - min)
+            fill.Size = UDim2.new(relativeX, 0, 1, 0)
+            handle.Position = UDim2.new(relativeX, -7, 0.5, -7)
+        end
+    }
 end
 
-return MyCustomUI
+-- Создание текстового поля
+function Library:CreateTextBox(parent, text, placeholder, callback)
+    local textBoxFrame = Instance.new("Frame")
+    textBoxFrame.Name = "TextBox"
+    textBoxFrame.Size = UDim2.new(1, 0, 0, 35)
+    textBoxFrame.BackgroundTransparency = 1
+    textBoxFrame.Parent = parent
+
+    local textBox = Instance.new("TextBox")
+    textBox.Name = "Input"
+    textBox.Size = UDim2.new(1, 0, 1, 0)
+    textBox.BackgroundColor3 = Library.Colors.Button
+    textBox.BorderColor3 = Library.Colors.Border
+    textBox.BorderSizePixel = 1
+    textBox.Text = text
+    textBox.PlaceholderText = placeholder
+    textBox.TextColor3 = Library.Colors.Text
+    textBox.Font = Enum.Font.Gotham
+    textBox.TextSize = 14
+    textBox.TextXAlignment = Enum.TextXAlignment.Left
+    textBox.Parent = textBoxFrame
+
+    textBox.FocusLost:Connect(function()
+        if callback then
+            callback(textBox.Text)
+        end
+    end)
+
+    return textBox
+end
+
+-- Создание метки
+function Library:CreateLabel(parent, text)
+    local label = Instance.new("TextLabel")
+    label.Name = "Label"
+    label.Size = UDim2.new(1, 0, 0, 20)
+    label.BackgroundTransparency = 1
+    label.Text = text
+    label.TextColor3 = Library.Colors.Text
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Font = Enum.Font.Gotham
+    label.TextSize = 14
+    label.Parent = parent
+
+    return label
+end
+
+return Library
