@@ -1,13 +1,31 @@
-local Lib = loadstring(game:HttpGet("https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/library"))()
+local Lib = loadstring(game:HttpGet("your_script_url"))()
 
-local Window = Lib:CreateWindow({Title = "My UI", Keybind = Enum.KeyCode.Insert})
+local Window = Lib:CreateWindow({Title = "My UI", Size = UDim2.new(0, 600, 0, 400), Keybind = Enum.KeyCode.Insert})
 
 local Tab = Window:AddTab("Settings")
 
-local Toggle = Tab:AddToggle({Name = "Enable Feature", Default = false, Callback = function(val) print("Toggled:", val) end})
+local Toggle = Tab:AddToggle({
+    Name = "Enable Feature",
+    Default = false,
+    Callback = function(val) print("Toggled:", val) end
+})
 
-local Slider = Tab:AddSlider({Name = "Volume", Min = 0, Max = 100, Default = 50, Callback = function(val) print("Slider:", val) end})
+local Slider = Tab:AddSlider({
+    Name = "Volume",
+    Min = 0,
+    Max = 100,
+    Default = 50,
+    Callback = function(val) print("Slider:", val) end
+})
 
-local Button = Tab:AddButton({Name = "Click Me", Callback = function() print("Clicked!") end})
+local Button = Tab:AddButton({
+    Name = "Click Me",
+    Callback = function() print("Clicked!") end
+})
 
-local Dropdown = Tab:AddDropdown({Name = "Mode", Options = {"Easy", "Hard"}, Default = "Easy", Callback = function(val) print("Selected:", val) end})
+local Dropdown = Tab:AddDropdown({
+    Name = "Mode",
+    Options = {"Easy", "Normal", "Hard"},
+    Default = "Easy",
+    Callback = function(val) print("Selected:", val) end
+})
