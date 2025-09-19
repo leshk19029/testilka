@@ -11,7 +11,13 @@ local function loadModule(url)
     local success, result = pcall(function()
         return loadstring(game:HttpGet(url))()
     end)
-    return success and result or nil
+    if success then
+        print("Module loaded successfully:", url)
+        return result
+    else
+        warn("Failed to load module:", url, result)
+        return nil
+    end
 end
 
 -- Загружаем модули
@@ -27,42 +33,125 @@ local movementSection = mainTab:CreateSection("Movement")
 local playerSection = mainTab:CreateSection("Player")
 local visualSection = mainTab:CreateSection("Visual")
 
--- Speed Boost
+-- Speed Boost (исправленная обработка)
 if SpeedBoostModule then
-    -- Toggle для Speed Boost
+    local speedEnabled = false
+    local currentSpeed = 25
+    local velocityConnection = nil
+    
+    local function applyVelocity()
+        if not speedEnabled then return end
+        
+        local player = game:GetService('Players').LocalPlayer
+        local character = player.Character
+        if not character then return end
+        
+        local humanoid = character:FindFirstChild("Humanoid")
+        local rootPart = character:FindFirstChild("HumanoidRootPart")
+        
+        if humanoid and rootPart then
+            local moveDirection = humanoid.MoveDirection
+            if moveDirection.Magnitude > 0 then
+                local velocity = moveDirection * currentSpeed
+                rootPart.Velocity = Vector3.new(velocity.X, rootPart.Velocity.Y, velocity.Z)
+            else
+                rootPart.Velocity = Vector3.new(0, rootPart.Velocity.Y, 0)
+            end
+        end
+    end
+    
     movementSection:Create("Toggle", "Speed Boost", function(state)
-        if SpeedBoostModule.toggleSpeedBoost then
-            SpeedBoostModule.toggleSpeedBoost(state)
+        speedEnabled = state
+        
+        if speedEnabled then
+            if velocityConnection then
+                velocityConnection:Disconnect()
+            end
+            velocityConnection = game:GetService('RunService').RenderStepped:Connect(applyVelocity)
+        else
+            if velocityConnection then
+                velocityConnection:Disconnect()
+                velocityConnection = nil
+            end
         end
     end, {default = false})
     
-    -- Slider для Speed Value
     movementSection:Create("Slider", "Speed Value", function(value)
-        if SpeedBoostModule.setSpeed then
-            SpeedBoostModule.setSpeed(value)
-        end
+        currentSpeed = math.clamp(value, 1, 45)
     end, {min = 1, max = 45, default = 25, precise = false})
 else
-    warn("Speed Boost module not loaded")
+    warn("Speed Boost module not loaded - using built-in")
 end
 
--- Anti Effects
+-- Anti Effects (исправленная обработка)
 if AntiEffectsModule then
+    local antiEffectsEnabled = false
+    local antiEffectsConnection = nil
+    
+    local function antiEffectsFunction()
+        local lighting = game:GetService("Lighting")
+        local camera = game:GetService("Workspace").CurrentCamera
+
+        -- Функция для удаления DiscoEffect
+        local function checkForDiscoEffect(child)
+            if child.Name == "DiscoEffect" then
+                child:Destroy()
+                
+                -- Удаляем Blur
+                local blur = lighting:FindFirstChild("Blur")
+                if blur then
+                    blur:Destroy()
+                end
+
+                -- Фиксируем FieldOfView
+                camera.FieldOfView = 70
+            end
+        end
+
+        -- Проверяем существующие эффекты
+        for _, child in ipairs(lighting:GetChildren()) do
+            if table.find({"DiscoEffect", "Blur", "BeeBlur", "ColorCorrection"}, child.Name) then
+                child:Destroy()
+            end
+        end
+
+        -- Фиксируем FOV
+        camera.FieldOfView = 70
+    end
+    
     playerSection:Create("Toggle", "Anti Effects", function(state)
-        if AntiEffectsModule.toggleAntiEffects then
-            AntiEffectsModule.toggleAntiEffects(state)
+        antiEffectsEnabled = state
+        
+        if antiEffectsEnabled then
+            -- Запускаем функцию и создаем соединение
+            antiEffectsFunction()
+            if antiEffectsConnection then
+                antiEffectsConnection:Disconnect()
+            end
+            antiEffectsConnection = game:GetService('RunService').Heartbeat:Connect(antiEffectsFunction)
+            
+            -- Слушатель для новых эффектов
+            game:GetService("Lighting").ChildAdded:Connect(function(child)
+                if table.find({"DiscoEffect", "Blur", "BeeBlur", "ColorCorrection"}, child.Name) then
+                    child:Destroy()
+                end
+            end)
+        else
+            -- Отключаем
+            if antiEffectsConnection then
+                antiEffectsConnection:Disconnect()
+                antiEffectsConnection = nil
+            end
         end
     end, {default = false})
 else
-    warn("Anti Effects module not loaded")
+    warn("Anti Effects module not loaded - using built-in")
 end
 
 -- ESP
-if ESPModule then
+if ESPModule and ESPModule.ToggleAll then
     visualSection:Create("Toggle", "ESP", function(state)
-        if ESPModule.ToggleAll then
-            ESPModule.ToggleAll(state)
-        end
+        ESPModule.ToggleAll(state)
     end, {default = false})
 else
     warn("ESP module not loaded")
