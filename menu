@@ -1,126 +1,216 @@
-local Zypher = loadstring(game:HttpGet("https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/library"))()
+local Zypher = require(путь_к_вашей_библиотеке) -- Замените на правильный путь
 
 -- Создаем экземпляр библиотеки
 local Library = Zypher.new("Zypher Menu", Enum.KeyCode.RightShift, Color3.fromRGB(65, 105, 225))
 
--- Создаем вкладки
+-- Создаем перетаскиваемый круг
+local function CreateDragCircle()
+    local UserInputService = game:GetService("UserInputService")
+    local RunService = game:GetService("RunService")
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
+    local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+    
+    -- Создаем круг
+    local DragCircle = Instance.new("Frame")
+    DragCircle.Name = "DragCircle"
+    DragCircle.Size = UDim2.new(0, 60, 0, 60)
+    DragCircle.Position = UDim2.new(0, 20, 0, 20)
+    DragCircle.BackgroundColor3 = Color3.fromRGB(65, 105, 225)
+    DragCircle.BackgroundTransparency = 0.3
+    DragCircle.BorderSizePixel = 0
+    DragCircle.ZIndex = 1000
+    DragCircle.Active = true
+    DragCircle.Selectable = true
+    DragCircle.ClipsDescendants = true
+    
+    -- Делаем круг круглым
+    local UICorner = Instance.new("UICorner")
+    UICorner.CornerRadius = UDim.new(1, 0)
+    UICorner.Parent = DragCircle
+    
+    -- Добавляем иконку меню
+    local MenuIcon = Instance.new("TextLabel")
+    MenuIcon.Name = "MenuIcon"
+    MenuIcon.Size = UDim2.new(1, 0, 1, 0)
+    MenuIcon.Position = UDim2.new(0, 0, 0, 0)
+    MenuIcon.BackgroundTransparency = 1
+    MenuIcon.Text = "≡"
+    MenuIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
+    MenuIcon.TextSize = 24
+    MenuIcon.Font = Enum.Font.GothamBold
+    MenuIcon.Parent = DragCircle
+    
+    -- Эффект нажатия
+    local UIScale = Instance.new("UIScale")
+    UIScale.Parent = DragCircle
+    
+    -- Добавляем в интерфейс
+    DragCircle.Parent = PlayerGui
+    
+    -- Переменные для перетаскивания
+    local isDragging = false
+    local dragStart = nil
+    local startPos = nil
+    local isMobile = UserInputService.TouchEnabled and not UserInputService.MouseEnabled
+    
+    -- Функция для анимации нажатия
+    local function animatePress(isPressed)
+        if isPressed then
+            UIScale.Scale = 0.8
+            DragCircle.BackgroundTransparency = 0.1
+        else
+            UIScale.Scale = 1
+            DragCircle.BackgroundTransparency = 0.3
+        end
+    end
+    
+    -- Обработка ввода для компьютера
+    if not isMobile then
+        DragCircle.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                animatePress(true)
+                isDragging = true
+                dragStart = input.Position
+                startPos = DragCircle.Position
+                
+                input.Changed:Connect(function()
+                    if input.UserInputState == Enum.UserInputState.End then
+                        isDragging = false
+                        animatePress(false)
+                    end
+                end)
+            end
+        end)
+        
+        DragCircle.InputChanged:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseMovement and isDragging then
+                local delta = input.Position - dragStart
+                DragCircle.Position = UDim2.new(
+                    startPos.X.Scale, 
+                    startPos.X.Offset + delta.X,
+                    startPos.Y.Scale, 
+                    startPos.Y.Offset + delta.Y
+                )
+            end
+        end)
+        
+        DragCircle.MouseButton1Click:Connect(function()
+            Library:Toggle()
+        end)
+    else
+        -- Обработка ввода для мобильных устройств
+        local touchStartTime = 0
+        local touchStartPos = nil
+        local isTouchDragging = false
+        
+        DragCircle.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.Touch then
+                touchStartTime = tick()
+                touchStartPos = input.Position
+                isTouchDragging = false
+                animatePress(true)
+                
+                input.Changed:Connect(function()
+                    if input.UserInputState == Enum.UserInputState.End then
+                        local touchDuration = tick() - touchStartTime
+                        
+                        -- Если было короткое нажатие (не перетаскивание) - открываем меню
+                        if not isTouchDragging and touchDuration < 0.3 then
+                            Library:Toggle()
+                        end
+                        
+                        animatePress(false)
+                    end
+                end)
+            end
+        end)
+        
+        DragCircle.InputChanged:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.Touch then
+                local currentPos = input.Position
+                if touchStartPos then
+                    local delta = (currentPos - touchStartPos).Magnitude
+                    
+                    -- Если перемещение больше 10 пикселей - считаем это перетаскиванием
+                    if delta > 10 then
+                        isTouchDragging = true
+                        
+                        local deltaPos = currentPos - touchStartPos
+                        DragCircle.Position = UDim2.new(
+                            DragCircle.Position.X.Scale, 
+                            DragCircle.Position.X.Offset + deltaPos.X,
+                            DragCircle.Position.Y.Scale, 
+                            DragCircle.Position.Y.Offset + deltaPos.Y
+                        )
+                        
+                        touchStartPos = currentPos
+                    end
+                end
+            end
+        end)
+    end
+    
+    -- Функция для обеспечения видимости круга в пределах экрана
+    local function ensureVisibility()
+        local screenSize = PlayerGui.AbsoluteSize
+        local circleSize = DragCircle.AbsoluteSize
+        local currentPos = DragCircle.Position
+        
+        local minX = 0
+        local maxX = screenSize.X - circleSize.X
+        local minY = 0
+        local maxY = screenSize.Y - circleSize.Y
+        
+        local newX = math.clamp(currentPos.X.Offset, minX, maxX)
+        local newY = math.clamp(currentPos.Y.Offset, minY, maxY)
+        
+        if newX ~= currentPos.X.Offset or newY ~= currentPos.Y.Offset then
+            DragCircle.Position = UDim2.new(currentPos.X.Scale, newX, currentPos.Y.Scale, newY)
+        end
+    end
+    
+    -- Периодическая проверка видимости
+    RunService.Heartbeat:Connect(ensureVisibility)
+    
+    -- Функция для скрытия/показа круга при открытии/закрытии меню
+    Library.MainFrame:GetPropertyChangedSignal("Visible"):Connect(function()
+        if Library.MainFrame.Visible then
+            DragCircle.Visible = false
+        else
+            DragCircle.Visible = true
+        end
+    end)
+    
+    return DragCircle
+end
+
+-- Создаем круг
+local DragCircle = CreateDragCircle()
+
+-- Теперь создаем меню (пример)
 local MainTab = Library:CreateTab("Main")
 local CombatTab = Library:CreateTab("Combat")
 local VisualsTab = Library:CreateTab("Visuals")
-local SettingsTab = Library:CreateTab("Settings")
-
--- Переменные для хранения состояний
-local ESPEnabled = false
-local AimbotEnabled = false
-local SpeedEnabled = false
-local JumpEnabled = false
 
 -- Главная вкладка
-Library:CreateLabel(MainTab, "Welcome to Zypher Menu!")
-Library:CreateLabel(MainTab, "Version: 1.0")
-
--- Кнопка с примером функционала
-Library:CreateButton(MainTab, "Teleport to Spawn", function()
-    local player = game.Players.LocalPlayer
-    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-        player.Character.HumanoidRootPart.CFrame = CFrame.new(0, 5, 0)
-        print("Teleported to spawn!")
-    end
+Library:CreateLabel(MainTab, "Drag Circle Menu!")
+Library:CreateButton(MainTab, "Test Button", function()
+    print("Button clicked!")
 end)
 
--- Переключатель ESP
-Library:CreateToggle(MainTab, "ESP", false, function(value)
-    ESPEnabled = value
-    print("ESP:", value and "Enabled" or "Disabled")
-    -- Здесь будет код ESP
-end)
-
--- Слайдер для изменения скорости
-local SpeedSlider = Library:CreateSlider(MainTab, "Walk Speed", 16, 100, 16, function(value)
-    local player = game.Players.LocalPlayer
-    if player.Character and player.Character:FindFirstChild("Humanoid") then
-        player.Character.Humanoid.WalkSpeed = value
-    end
+Library:CreateToggle(MainTab, "Example Toggle", false, function(value)
+    print("Toggle:", value)
 end)
 
 -- Вкладка Combat
 Library:CreateToggle(CombatTab, "Aimbot", false, function(value)
-    AimbotEnabled = value
-    print("Aimbot:", value and "Enabled" or "Disabled")
-    -- Код аимбота здесь
-end)
-
-Library:CreateSlider(CombatTab, "Aimbot FOV", 1, 360, 90, function(value)
-    print("Aimbot FOV set to:", value)
-end)
-
-Library:CreateToggle(CombatTab, "Trigger Bot", false, function(value)
-    print("Trigger Bot:", value and "Enabled" or "Disabled")
+    print("Aimbot:", value)
 end)
 
 -- Вкладка Visuals
-Library:CreateToggle(VisualsTab, "Wallhack", false, function(value)
-    print("Wallhack:", value and "Enabled" or "Disabled")
+Library:CreateToggle(VisualsTab, "ESP", false, function(value)
+    print("ESP:", value)
 end)
 
-Library:CreateToggle(VisualsTab, "Fullbright", false, function(value)
-    if value then
-        game.Lighting.Ambient = Color3.new(1, 1, 1)
-        game.Lighting.FogEnd = 100000
-    else
-        game.Lighting.Ambient = Color3.new(0.5, 0.5, 0.5)
-        game.Lighting.FogEnd = 1000
-    end
-end)
-
-Library:CreateSlider(VisualsTab, "Field of View", 70, 120, 70, function(value)
-    local player = game.Players.LocalPlayer
-    if player:FindFirstChild("Camera") then
-        player.Camera.FieldOfView = value
-    end
-end)
-
--- Вкладка Settings
-Library:CreateButton(SettingsTab, "Save Configuration", function()
-    print("Configuration saved!")
-end)
-
-Library:CreateButton(SettingsTab, "Load Configuration", function()
-    print("Configuration loaded!")
-end)
-
-Library:CreateToggle(SettingsTab, "Auto Save", true, function(value)
-    print("Auto Save:", value and "Enabled" or "Disabled")
-end)
-
--- Дополнительные функции для мобильной оптимизации
-if Library.IS_MOBILE then
-    Library:CreateLabel(SettingsTab, "Mobile Settings")
-    
-    Library:CreateSlider(SettingsTab, "UI Scale", 0.5, 1.5, 1, function(value)
-        Library.MainFrame.Size = UDim2.new(0, 500 * value, 0, 350 * value)
-    end)
-    
-    Library:CreateToggle(SettingsTab, "Vibration Feedback", true, function(value)
-        print("Vibration:", value and "Enabled" or "Disabled")
-    end)
-end
-
--- Функция для демонстрации работы меню
-Library:CreateButton(MainTab, "Test All Features", function()
-    print("Testing all features...")
-    
-    -- Тестируем переключатели
-    ESPEnabled = not ESPEnabled
-    print("ESP toggled to:", ESPEnabled)
-    
-    -- Тестируем слайдер
-    SpeedSlider.Value = 50
-    print("Speed set to: 50")
-end)
-
--- Информационная метка
-Library:CreateLabel(MainTab, "Press RightShift to toggle menu")
-if Library.IS_MOBILE then
-    Library:CreateLabel(MainTab, "Use the button in the corner to toggle menu")
-end
+print("Drag Circle Menu loaded! Use the circle to open/close menu.")
