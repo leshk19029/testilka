@@ -8,29 +8,11 @@ local UI = MyLibrary:Create({
 local MainTab = UI:CreateTab("Главная")
 local CombatTab = UI:CreateTab("Бой")
 
--- Добавляем элементы
+-- Теперь переключение вкладок работает правильно
 local Toggle1 = MainTab:AddToggle({
     Name = "Включить функции",
     Default = false,
     Callback = function(value)
         print("Toggle:", value)
-    end
-})
-
-local Button1 = MainTab:AddButton({
-    Name = "Тестовая кнопка",
-    Callback = function()
-        print("Кнопка нажата!")
-    end
-})
-
-local Slider1 = MainTab:AddSlider({
-    Name = "Скорость",
-    Min = 0,
-    Max = 100,
-    Default = 50,
-    Round = 1,
-    Callback = function(value)
-        print("Скорость:", value)
     end
 })
