@@ -47,4 +47,7 @@ ui:CreateButton(infoTab, "Print Credits", function()
     print("Menu created using Zypher UI Library!")
 end)
 
+-- Open the menu automatically
+ui:Toggle()
+
 return ui
