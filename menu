@@ -1,4 +1,4 @@
--- Загрузка вашей библиотеки выф
+-- Загрузка вашей библиотеки
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/teppyboy/RbxScripts/master/Misc/UI_Libraries/Zypher/Library.lua"))()
 
 -- Создание главного окна
@@ -14,11 +14,10 @@ local function loadModule(url)
     return success and result or nil
 end
 
--- Загружаем модули
+-- Загружаем только рабочие модули
 local SpeedBoostModule = loadModule("https://raw.githubusercontent.com/leshk19029/sphirit/refs/heads/main/2")
 local AntiEffectsModule = loadModule("https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/1")
 local ESPModule = loadModule("https://raw.githubusercontent.com/leshk19029/sphirit/refs/heads/main/esp")
-local ControlPlayerModule = loadModule("https://raw.githubusercontent.com/leshk19029/sphirit/refs/heads/main/3")
 
 -- Создаем вкладку Main
 local mainTab = window:CreateCategory("Main")
@@ -65,17 +64,6 @@ if ESPModule then
     end, {default = false})
 else
     warn("ESP module not loaded")
-end
-
--- Control Player
-if ControlPlayerModule then
-    playerSection:Create("Toggle", "Control Player", function(state)
-        if ControlPlayerModule.toggleControlPlayer then
-            ControlPlayerModule.toggleControlPlayer(state)
-        end
-    end, {default = false})
-else
-    warn("Control Player module not loaded")
 end
 
 -- Hotkey для открытия/закрытия
