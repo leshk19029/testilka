@@ -1,76 +1,92 @@
 -- Загрузка вашей библиотеки
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/teppyboy/RbxScripts/master/Misc/UI_Libraries/Zypher/Library.lua"))()
+local Zypher = loadstring(game:HttpGet("https://raw.githubusercontent.com/your-username/your-repo/main/zypher_mobile.lua"))()
 
 -- Создание главного окна
-local window = Library:CreateMain({
-    projName = "PURY"
-})
+local window = Zypher.new("PURY MENU", Enum.KeyCode.LeftControl, Color3.fromRGB(60, 120, 200))
 
 -- Функция для загрузки модулей
-local function loadModule(url)
+local function loadModule(url, moduleName)
     local success, result = pcall(function()
-        return loadstring(game:HttpGet(url))()
+        local content = game:HttpGet(url)
+        return loadstring(content)()
     end)
-    return success and result or nil
+    
+    if success then
+        print("✅ " .. moduleName .. " loaded successfully")
+        return result
+    else
+        warn("❌ " .. moduleName .. " failed to load: " .. tostring(result))
+        return nil
+    end
 end
 
--- Загружаем только рабочие модули
-local SpeedBoostModule = loadModule("https://raw.githubusercontent.com/leshk19029/sphirit/refs/heads/main/2")
-local AntiEffectsModule = loadModule("https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/1")
-local ESPModule = loadModule("https://raw.githubusercontent.com/leshk19029/sphirit/refs/heads/main/esp")
+-- Загружаем модули
+local SpeedBoostModule = loadModule("https://raw.githubusercontent.com/leshk19029/sphirit/refs/heads/main/2", "Speed Boost")
+local AntiEffectsModule = loadModule("https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/1", "Anti Effects")
+local ESPModule = loadModule("https://raw.githubusercontent.com/leshk19029/sphirit/refs/heads/main/esp", "ESP")
 
 -- Создаем вкладку Main
-local mainTab = window:CreateCategory("Main")
+local mainTab = window:CreateTab("Main")
 
--- Создаем секции
-local movementSection = mainTab:CreateSection("Movement")
-local playerSection = mainTab:CreateSection("Player")
-local visualSection = mainTab:CreateSection("Visual")
+-- Переменные для хранения состояний
+local speedBoostEnabled = false
+local currentSpeedValue = 25
 
--- Speed Boost
+-- Speed Boost Section
+window:CreateLabel(mainTab, "=== MOVEMENT ===")
+
 if SpeedBoostModule then
-    movementSection:Create("Toggle", "Speed Boost", function(state)
+    -- Toggle для Speed Boost
+    window:CreateToggle(mainTab, "Speed Boost", false, function(state)
+        speedBoostEnabled = state
         if SpeedBoostModule.toggleSpeedBoost then
             SpeedBoostModule.toggleSpeedBoost(state)
         end
-    end, {default = false})
+        print("Speed Boost: " .. (state and "ON" or "OFF"))
+    end)
     
-    movementSection:Create("Slider", "Speed Value", function(value)
-        if SpeedBoostModule.setSpeed then
+    -- Slider для значения скорости
+    window:CreateSlider(mainTab, "Speed Value", 1, 45, 25, function(value)
+        currentSpeedValue = value
+        if speedBoostEnabled and SpeedBoostModule.setSpeed then
             SpeedBoostModule.setSpeed(value)
         end
-    end, {min = 1, max = 45, default = 25, precise = false})
+        print("Speed set to: " .. value)
+    end)
 else
-    warn("Speed Boost module not loaded")
+    window:CreateLabel(mainTab, "❌ Speed Boost module not loaded")
 end
 
--- Anti Effects
+-- Anti Effects Section
+window:CreateLabel(mainTab, "=== PLAYER ===")
+
 if AntiEffectsModule then
-    playerSection:Create("Toggle", "Anti Effects", function(state)
+    window:CreateToggle(mainTab, "Anti Effects", false, function(state)
         if AntiEffectsModule.toggleAntiEffects then
             AntiEffectsModule.toggleAntiEffects(state)
         end
-    end, {default = false})
+        print("Anti Effects: " .. (state and "ON" or "OFF"))
+    end)
 else
-    warn("Anti Effects module not loaded")
+    window:CreateLabel(mainTab, "❌ Anti Effects module not loaded")
 end
 
--- ESP
+-- ESP Section
+window:CreateLabel(mainTab, "=== VISUAL ===")
+
 if ESPModule then
-    visualSection:Create("Toggle", "ESP", function(state)
+    window:CreateToggle(mainTab, "ESP", false, function(state)
         if ESPModule.ToggleAll then
             ESPModule.ToggleAll(state)
         end
-    end, {default = false})
+        print("ESP: " .. (state and "ON" or "OFF"))
+    end)
 else
-    warn("ESP module not loaded")
+    window:CreateLabel(mainTab, "❌ ESP module not loaded")
 end
 
--- Hotkey для открытия/закрытия
-UIS.InputBegan:Connect(function(input)
-    if input.KeyCode == Enum.KeyCode.LeftControl then
-        window.Motherframe.Visible = not window.Motherframe.Visible
-    end
-end)
+-- Добавляем информационную метку
+window:CreateLabel(mainTab, " ")
+window:CreateLabel(mainTab, "Press LeftControl to toggle menu")
 
-print("PURY Menu Loaded!")
+print("PURY Menu Loaded Successfully!")
