@@ -1,503 +1,446 @@
-local Library = {}
+-- MyCustomUI Library
+local MyCustomUI = {}
+MyCustomUI.__index = MyCustomUI
 
--- Цвета библиотеки
-Library.Colors = {
+-- Сервисы
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+-- Цветовая схема
+MyCustomUI.Colors = {
+    Primary = Color3.fromRGB(65, 105, 225), -- Royal Blue
+    Secondary = Color3.fromRGB(50, 50, 60),
     Background = Color3.fromRGB(25, 25, 35),
-    Header = Color3.fromRGB(35, 35, 45),
-    TabButton = Color3.fromRGB(40, 40, 50),
-    TabButtonSelected = Color3.fromRGB(50, 120, 255),
-    ElementBackground = Color3.fromRGB(35, 35, 45),
     Text = Color3.fromRGB(240, 240, 240),
-    Highlight = Color3.fromRGB(60, 140, 255),
-    ToggleOff = Color3.fromRGB(80, 80, 90),
-    ToggleOn = Color3.fromRGB(60, 180, 85),
-    SliderTrack = Color3.fromRGB(60, 60, 70),
-    SliderFill = Color3.fromRGB(50, 120, 255),
-    Button = Color3.fromRGB(50, 120, 255),
-    ButtonHover = Color3.fromRGB(70, 140, 255)
+    Accent = Color3.fromRGB(255, 105, 180), -- Hot Pink
+    Success = Color3.fromRGB(50, 205, 50),
+    Warning = Color3.fromRGB(255, 165, 0),
+    Error = Color3.fromRGB(220, 20, 60)
 }
 
--- Вспомогательные функции
-function Library:CreateElement(className, properties)
-    local element = Instance.new(className)
-    for property, value in pairs(properties) do
-        element[property] = value
-    end
-    return element
-end
-
-function Library:RoundCorners(element, radius)
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, radius or 5)
-    corner.Parent = element
-    return corner
-end
-
-function Library:AddStroke(element, color, thickness)
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = color or Color3.fromRGB(50, 50, 60)
-    stroke.Thickness = thickness or 1
-    stroke.Parent = element
-    return stroke
-end
-
--- Основная функция создания библиотеки
-function Library:Create(options)
+-- Создание окна
+function MyCustomUI:CreateWindow(options)
+    local window = {}
+    setmetatable(window, MyCustomUI)
+    
     options = options or {}
-    local lib = {}
-    lib.Visible = false
-    lib.Tabs = {}
-    lib.CurrentTab = nil
+    window.Name = options.Name or "Custom UI"
+    window.Keybind = options.Keybind or Enum.KeyCode.RightShift
+    window.Visible = false
     
-    -- Создание основного интерфейса
-    local ScreenGui = self:CreateElement("ScreenGui", {
-        Name = "LibraryUI",
-        DisplayOrder = 999,
-        ResetOnSpawn = false
-    })
+    -- Создание GUI
+    window.ScreenGui = Instance.new("ScreenGui")
+    window.ScreenGui.Name = window.Name
+    window.ScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+    window.ScreenGui.ResetOnSpawn = false
     
-    -- Фон
-    local Background = self:CreateElement("Frame", {
-        Name = "Background",
-        Size = UDim2.new(0, 500, 0, 400),
-        Position = UDim2.new(0.5, -250, 0.5, -200),
-        BackgroundColor3 = self.Colors.Background,
-        Visible = false
-    })
-    self:RoundCorners(Background, 8)
-    self:AddStroke(Background)
-    Background.Parent = ScreenGui
+    -- Основной фрейм
+    window.MainFrame = Instance.new("Frame")
+    window.MainFrame.Name = "MainFrame"
+    window.MainFrame.Size = UDim2.new(0, 450, 0, 500)
+    window.MainFrame.Position = UDim2.new(0.5, -225, 0.5, -250)
+    window.MainFrame.BackgroundColor3 = MyCustomUI.Colors.Background
+    window.MainFrame.BorderSizePixel = 0
+    window.MainFrame.ClipsDescendants = true
+    window.MainFrame.Parent = window.ScreenGui
     
-    -- Шапка с названием
-    local Header = self:CreateElement("Frame", {
-        Name = "Header",
-        Size = UDim2.new(1, 0, 0, 40),
-        BackgroundColor3 = self.Colors.Header
-    })
-    self:RoundCorners(Header, 8)
-    Header.Parent = Background
+    -- Скругление углов
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = window.MainFrame
     
-    local Title = self:CreateElement("TextLabel", {
-        Name = "Title",
-        Size = UDim2.new(0, 200, 1, 0),
-        Position = UDim2.new(0, 15, 0, 0),
-        BackgroundTransparency = 1,
-        Text = options.Name or "LIBRARY",
-        TextColor3 = self.Colors.Text,
-        TextSize = 18,
-        Font = Enum.Font.GothamBold,
-        TextXAlignment = Enum.TextXAlignment.Left
-    })
-    Title.Parent = Header
+    -- Тень
+    local shadow = Instance.new("ImageLabel")
+    shadow.Name = "Shadow"
+    shadow.Size = UDim2.new(1, 10, 1, 10)
+    shadow.Position = UDim2.new(0, -5, 0, -5)
+    shadow.BackgroundTransparency = 1
+    shadow.Image = "rbxassetid://1316045217"
+    shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+    shadow.ImageTransparency = 0.8
+    shadow.ScaleType = Enum.ScaleType.Slice
+    shadow.SliceCenter = Rect.new(10, 10, 118, 118)
+    shadow.Parent = window.MainFrame
+    shadow.ZIndex = -1
     
-    -- Контейнер для вкладок
-    local TabContainer = self:CreateElement("Frame", {
-        Name = "TabContainer",
-        Size = UDim2.new(0, 120, 1, -40),
-        Position = UDim2.new(0, 0, 0, 40),
-        BackgroundTransparency = 1
-    })
-    TabContainer.Parent = Background
+    -- Заголовок
+    window.TitleFrame = Instance.new("Frame")
+    window.TitleFrame.Name = "TitleFrame"
+    window.TitleFrame.Size = UDim2.new(1, 0, 0, 40)
+    window.TitleFrame.Position = UDim2.new(0, 0, 0, 0)
+    window.TitleFrame.BackgroundColor3 = MyCustomUI.Colors.Secondary
+    window.TitleFrame.BorderSizePixel = 0
+    window.TitleFrame.Parent = window.MainFrame
     
-    -- Контейнер для контента
-    local ContentContainer = self:CreateElement("Frame", {
-        Name = "ContentContainer",
-        Size = UDim2.new(1, -120, 1, -40),
-        Position = UDim2.new(0, 120, 0, 40),
-        BackgroundTransparency = 1,
-        ClipsDescendants = true
-    })
-    ContentContainer.Parent = Background
+    local titleCorner = Instance.new("UICorner")
+    titleCorner.CornerRadius = UDim.new(0, 8)
+    titleCorner.Parent = window.TitleFrame
     
-    local ContentScrolling = self:CreateElement("ScrollingFrame", {
-        Name = "ContentScrolling",
-        Size = UDim2.new(1, 0, 1, 0),
-        BackgroundTransparency = 1,
-        ScrollBarThickness = 4,
-        CanvasSize = UDim2.new(0, 0, 0, 0),
-        AutomaticCanvasSize = Enum.AutomaticSize.Y
-    })
-    ContentScrolling.Parent = ContentContainer
+    window.TitleLabel = Instance.new("TextLabel")
+    window.TitleLabel.Name = "TitleLabel"
+    window.TitleLabel.Size = UDim2.new(1, -80, 1, 0)
+    window.TitleLabel.Position = UDim2.new(0, 15, 0, 0)
+    window.TitleLabel.BackgroundTransparency = 1
+    window.TitleLabel.Text = window.Name
+    window.TitleLabel.TextColor3 = MyCustomUI.Colors.Text
+    window.TitleLabel.TextSize = 16
+    window.TitleLabel.Font = Enum.Font.GothamBold
+    window.TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    window.TitleLabel.Parent = window.TitleFrame
     
-    local ContentLayout = self:CreateElement("UIListLayout", {
-        SortOrder = Enum.SortOrder.LayoutOrder,
-        Padding = UDim.new(0, 5)
-    })
-    ContentLayout.Parent = ContentScrolling
+    -- Кнопка закрытия
+    window.CloseButton = Instance.new("TextButton")
+    window.CloseButton.Name = "CloseButton"
+    window.CloseButton.Size = UDim2.new(0, 30, 0, 30)
+    window.CloseButton.Position = UDim2.new(1, -40, 0, 5)
+    window.CloseButton.BackgroundColor3 = Color3.fromRGB(220, 20, 60)
+    window.CloseButton.Text = "X"
+    window.CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    window.CloseButton.TextSize = 14
+    window.CloseButton.Font = Enum.Font.GothamBold
+    window.CloseButton.Parent = window.TitleFrame
     
-    -- Функция создания вкладки
-    function lib:CreateTab(name)
-        local tab = {}
-        tab.Name = name
-        
-        -- Кнопка вкладки
-        local TabButton = Library:CreateElement("TextButton", {
-            Name = name .. "TabButton",
-            Size = UDim2.new(1, -10, 0, 35),
-            Position = UDim2.new(0, 5, 0, #lib.Tabs * 40 + 5),
-            BackgroundColor3 = Library.Colors.TabButton,
-            Text = "",
-            AutoButtonColor = false
-        })
-        Library:RoundCorners(TabButton, 5)
-        TabButton.Parent = TabContainer
-        
-        local TabButtonText = Library:CreateElement("TextLabel", {
-            Name = "Text",
-            Size = UDim2.new(1, 0, 1, 0),
-            BackgroundTransparency = 1,
-            Text = name,
-            TextColor3 = Library.Colors.Text,
-            TextSize = 14,
-            Font = Enum.Font.Gotham,
-            TextXAlignment = Enum.TextXAlignment.Left
-        })
-        TabButtonText.Position = UDim2.new(0, 15, 0, 0)
-        TabButtonText.Parent = TabButton
-        
-        -- Контент вкладки
-        local TabContent = Library:CreateElement("ScrollingFrame", {
-            Name = name .. "Content",
-            Size = UDim2.new(1, 0, 1, 0),
-            BackgroundTransparency = 1,
-            Visible = false,
-            ScrollBarThickness = 4,
-            CanvasSize = UDim2.new(0, 0, 0, 0),
-            AutomaticCanvasSize = Enum.AutomaticSize.Y
-        })
-        TabContent.Parent = ContentScrolling
-        
-        local TabLayout = Library:CreateElement("UIListLayout", {
-            SortOrder = Enum.SortOrder.LayoutOrder,
-            Padding = UDim.new(0, 10)
-        })
-        TabLayout.Parent = TabContent
-        
-        -- Функция переключения вкладки
-        TabButton.MouseButton1Click:Connect(function()
-            lib:SwitchTab(tab)
-        end)
-        
-        -- Функции для элементов
-        function tab:AddToggle(options)
-            options = options or {}
-            local toggle = {}
-            
-            local ToggleFrame = Library:CreateElement("Frame", {
-                Name = "ToggleFrame",
-                Size = UDim2.new(1, -20, 0, 30),
-                BackgroundColor3 = Library.Colors.ElementBackground,
-                LayoutOrder = #TabContent:GetChildren() * 2
-            })
-            Library:RoundCorners(ToggleFrame, 5)
-            Library:AddStroke(ToggleFrame)
-            ToggleFrame.Parent = TabContent
-            
-            local ToggleText = Library:CreateElement("TextLabel", {
-                Name = "Text",
-                Size = UDim2.new(0.7, 0, 1, 0),
-                BackgroundTransparency = 1,
-                Text = options.Name or "Toggle",
-                TextColor3 = Library.Colors.Text,
-                TextSize = 14,
-                Font = Enum.Font.Gotham,
-                TextXAlignment = Enum.TextXAlignment.Left
-            })
-            ToggleText.Position = UDim2.new(0, 10, 0, 0)
-            ToggleText.Parent = ToggleFrame
-            
-            local ToggleSwitch = Library:CreateElement("Frame", {
-                Name = "Switch",
-                Size = UDim2.new(0, 40, 0, 20),
-                Position = UDim2.new(1, -50, 0.5, -10),
-                BackgroundColor3 = options.Default and Library.Colors.ToggleOn or Library.Colors.ToggleOff
-            })
-            Library:RoundCorners(ToggleSwitch, 10)
-            ToggleSwitch.Parent = ToggleFrame
-            
-            local ToggleDot = Library:CreateElement("Frame", {
-                Name = "Dot",
-                Size = UDim2.new(0, 16, 0, 16),
-                Position = options.Default and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8),
-                BackgroundColor3 = Library.Colors.Text
-            })
-            Library:RoundCorners(ToggleDot, 8)
-            ToggleDot.Parent = ToggleSwitch
-            
-            toggle.Value = options.Default or false
-            
-            local function updateToggle()
-                toggle.Value = not toggle.Value
-                local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-                
-                local tween1 = game:GetService("TweenService"):Create(
-                    ToggleDot,
-                    tweenInfo,
-                    {Position = toggle.Value and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)}
-                )
-                
-                local tween2 = game:GetService("TweenService"):Create(
-                    ToggleSwitch,
-                    tweenInfo,
-                    {BackgroundColor3 = toggle.Value and Library.Colors.ToggleOn or Library.Colors.ToggleOff}
-                )
-                
-                tween1:Play()
-                tween2:Play()
-                
-                if options.Callback then
-                    options.Callback(toggle.Value)
-                end
-            end
-            
-            ToggleFrame.MouseButton1Click:Connect(updateToggle)
-            ToggleSwitch.MouseButton1Click:Connect(updateToggle)
-            
-            return toggle
+    local closeCorner = Instance.new("UICorner")
+    closeCorner.CornerRadius = UDim.new(0, 6)
+    closeCorner.Parent = window.CloseButton
+    
+    -- Контент
+    window.ContentFrame = Instance.new("ScrollingFrame")
+    window.ContentFrame.Name = "ContentFrame"
+    window.ContentFrame.Size = UDim2.new(1, -20, 1, -60)
+    window.ContentFrame.Position = UDim2.new(0, 10, 0, 50)
+    window.ContentFrame.BackgroundTransparency = 1
+    window.ContentFrame.BorderSizePixel = 0
+    window.ContentFrame.ScrollBarThickness = 4
+    window.ContentFrame.ScrollBarImageColor3 = MyCustomUI.Colors.Primary
+    window.ContentFrame.Parent = window.MainFrame
+    
+    window.UIListLayout = Instance.new("UIListLayout")
+    window.UIListLayout.Parent = window.ContentFrame
+    window.UIListLayout.Padding = UDim.new(0, 10)
+    
+    -- Обработчики событий
+    window.CloseButton.MouseButton1Click:Connect(function()
+        window:Toggle()
+    end)
+    
+    UserInputService.InputBegan:Connect(function(input)
+        if input.KeyCode == window.Keybind then
+            window:Toggle()
         end
-        
-        function tab:AddButton(options)
-            options = options or {}
-            
-            local Button = Library:CreateElement("TextButton", {
-                Name = "Button",
-                Size = UDim2.new(1, -20, 0, 35),
-                BackgroundColor3 = Library.Colors.Button,
-                Text = options.Name or "Button",
-                TextColor3 = Library.Colors.Text,
-                TextSize = 14,
-                Font = Enum.Font.Gotham,
-                AutoButtonColor = false,
-                LayoutOrder = #TabContent:GetChildren() * 2
-            })
-            Library:RoundCorners(Button, 5)
-            Button.Parent = TabContent
-            
-            -- Hover эффект
-            Button.MouseEnter:Connect(function()
-                game:GetService("TweenService"):Create(
-                    Button,
-                    TweenInfo.new(0.2),
-                    {BackgroundColor3 = Library.Colors.ButtonHover}
-                ):Play()
-            end)
-            
-            Button.MouseLeave:Connect(function()
-                game:GetService("TweenService"):Create(
-                    Button,
-                    TweenInfo.new(0.2),
-                    {BackgroundColor3 = Library.Colors.Button}
-                ):Play()
-            end)
-            
-            Button.MouseButton1Click:Connect(function()
-                if options.Callback then
-                    options.Callback()
-                end
-            end)
-            
-            return Button
-        end
-        
-        function tab:AddSlider(options)
-            options = options or {}
-            local slider = {}
-            slider.Value = options.Default or options.Min or 0
-            
-            local SliderFrame = Library:CreateElement("Frame", {
-                Name = "SliderFrame",
-                Size = UDim2.new(1, -20, 0, 50),
-                BackgroundColor3 = Library.Colors.ElementBackground,
-                LayoutOrder = #TabContent:GetChildren() * 2
-            })
-            Library:RoundCorners(SliderFrame, 5)
-            Library:AddStroke(SliderFrame)
-            SliderFrame.Parent = TabContent
-            
-            local SliderText = Library:CreateElement("TextLabel", {
-                Name = "Text",
-                Size = UDim2.new(1, -20, 0, 20),
-                Position = UDim2.new(0, 10, 0, 5),
-                BackgroundTransparency = 1,
-                Text = options.Name or "Slider: " .. slider.Value,
-                TextColor3 = Library.Colors.Text,
-                TextSize = 14,
-                Font = Enum.Font.Gotham,
-                TextXAlignment = Enum.TextXAlignment.Left
-            })
-            SliderText.Parent = SliderFrame
-            
-            local SliderTrack = Library:CreateElement("Frame", {
-                Name = "Track",
-                Size = UDim2.new(1, -20, 0, 6),
-                Position = UDim2.new(0, 10, 0, 30),
-                BackgroundColor3 = Library.Colors.SliderTrack
-            })
-            Library:RoundCorners(SliderTrack, 3)
-            SliderTrack.Parent = SliderFrame
-            
-            local SliderFill = Library:CreateElement("Frame", {
-                Name = "Fill",
-                Size = UDim2.new(0, 0, 1, 0),
-                BackgroundColor3 = Library.Colors.SliderFill
-            })
-            Library:RoundCorners(SliderFill, 3)
-            SliderFill.Parent = SliderTrack
-            
-            local SliderThumb = Library:CreateElement("Frame", {
-                Name = "Thumb",
-                Size = UDim2.new(0, 12, 0, 12),
-                Position = UDim2.new(0, -6, 0.5, -6),
-                BackgroundColor3 = Library.Colors.Text
-            })
-            Library:RoundCorners(SliderThumb, 6)
-            SliderThumb.Parent = SliderTrack
-            
-            local min = options.Min or 0
-            local max = options.Max or 100
-            local default = options.Default or min
-            
-            local function updateSlider(value)
-                value = math.clamp(value, min, max)
-                slider.Value = value
-                
-                local percentage = (value - min) / (max - min)
-                SliderFill.Size = UDim2.new(percentage, 0, 1, 0)
-                SliderThumb.Position = UDim2.new(percentage, -6, 0.5, -6)
-                SliderText.Text = options.Name and (options.Name .. ": " .. value) or ("Slider: " .. value)
-                
-                if options.Callback then
-                    options.Callback(value)
-                end
-            end
-            
-            updateSlider(default)
-            
-            local dragging = false
-            SliderThumb.InputBegan:Connect(function(input)
-                if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                    dragging = true
-                end
-            end)
-            
-            SliderThumb.InputEnded:Connect(function(input)
-                if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                    dragging = false
-                end
-            end)
-            
-            game:GetService("UserInputService").InputChanged:Connect(function(input)
-                if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-                    local mousePos = game:GetService("UserInputService"):GetMouseLocation()
-                    local absolutePos = SliderTrack.AbsolutePosition
-                    local absoluteSize = SliderTrack.AbsoluteSize
-                    
-                    local relativeX = math.clamp((mousePos.X - absolutePos.X) / absoluteSize.X, 0, 1)
-                    local value = min + (max - min) * relativeX
-                    
-                    if options.Round then
-                        value = math.floor(value / options.Round) * options.Round
-                    end
-                    
-                    updateSlider(value)
-                end
-            end)
-            
-            SliderTrack.MouseButton1Click:Connect(function()
-                local mousePos = game:GetService("UserInputService"):GetMouseLocation()
-                local absolutePos = SliderTrack.AbsolutePosition
-                local absoluteSize = SliderTrack.AbsoluteSize
-                
-                local relativeX = math.clamp((mousePos.X - absolutePos.X) / absoluteSize.X, 0, 1)
-                local value = min + (max - min) * relativeX
-                
-                if options.Round then
-                    value = math.floor(value / options.Round) * options.Round
-                end
-                
-                updateSlider(value)
-            end)
-            
-            return slider
-        end
-        
-        table.insert(lib.Tabs, tab)
-        
-        -- Автоматически выбираем первую вкладку
-        if #lib.Tabs == 1 then
-            lib:SwitchTab(tab)
-        end
-        
-        return tab
-    end
+    end)
     
-    -- Функция переключения вкладок (ИСПРАВЛЕНА)
-    function lib:SwitchTab(selectedTab)
-        -- Скрыть все вкладки
-        for _, tab in ipairs(self.Tabs) do
-            local tabContent = ContentScrolling:FindFirstChild(tab.Name .. "Content")
-            if tabContent then
-                tabContent.Visible = false
-            end
-            
-            -- Вернуть обычный цвет всем кнопкам
-            local tabButton = TabContainer:FindFirstChild(tab.Name .. "TabButton")
-            if tabButton then
-                game:GetService("TweenService"):Create(
-                    tabButton,
-                    TweenInfo.new(0.2),
-                    {BackgroundColor3 = Library.Colors.TabButton}
-                ):Play()
-            end
-        end
-        
-        -- Показать выбранную вкладку
-        local selectedContent = ContentScrolling:FindFirstChild(selectedTab.Name .. "Content")
-        if selectedContent then
-            selectedContent.Visible = true
-        end
-        
-        -- Подсветить кнопку выбранной вкладки
-        local selectedButton = TabContainer:FindFirstChild(selectedTab.Name .. "TabButton")
-        if selectedButton then
-            game:GetService("TweenService"):Create(
-                selectedButton,
-                TweenInfo.new(0.2),
-                {BackgroundColor3 = Library.Colors.TabButtonSelected}
-            ):Play()
-        end
-        
-        self.CurrentTab = selectedTab
-    end
-    
-    -- Функции показа/скрытия
-    function lib:Toggle()
-        lib.Visible = not lib.Visible
-        Background.Visible = lib.Visible
-    end
-    
-    function lib:Show()
-        lib.Visible = true
-        Background.Visible = true
-    end
-    
-    function lib:Hide()
-        lib.Visible = false
-        Background.Visible = false
-    end
-    
-    -- Добавляем горячую клавишу
-    if options.Keybind then
-        game:GetService("UserInputService").InputBegan:Connect(function(input)
-            if input.KeyCode == Enum.KeyCode[options.Keybind] then
-                lib:Toggle()
-            end
-        end)
-    end
-    
-    ScreenGui.Parent = game:GetService("CoreGui")
-    
-    return lib
+    return window
 end
 
-return Library
+-- Переключение видимости
+function MyCustomUI:Toggle()
+    self.Visible = not self.Visible
+    self.MainFrame.Visible = self.Visible
+end
+
+-- Создание секции
+function MyCustomUI:CreateSection(name)
+    local section = {}
+    
+    section.Frame = Instance.new("Frame")
+    section.Frame.Name = "Section_" .. name
+    section.Frame.Size = UDim2.new(1, 0, 0, 0)
+    section.Frame.BackgroundTransparency = 1
+    section.Frame.Parent = self.ContentFrame
+    
+    section.UIListLayout = Instance.new("UIListLayout")
+    section.UIListLayout.Parent = section.Frame
+    section.UIListLayout.Padding = UDim.new(0, 8)
+    
+    -- Заголовок секции
+    section.TitleLabel = Instance.new("TextLabel")
+    section.TitleLabel.Name = "Title"
+    section.TitleLabel.Size = UDim2.new(1, 0, 0, 20)
+    section.TitleLabel.BackgroundTransparency = 1
+    section.TitleLabel.Text = name
+    section.TitleLabel.TextColor3 = MyCustomUI.Colors.Primary
+    section.TitleLabel.TextSize = 14
+    section.TitleLabel.Font = Enum.Font.GothamBold
+    section.TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    section.TitleLabel.Parent = section.Frame
+    
+    section.Elements = {}
+    
+    function section:UpdateSize()
+        local totalHeight = 30 -- Заголовок + отступы
+        for _, element in pairs(self.Elements) do
+            totalHeight += element.Size.Y.Offset + 8
+        end
+        self.Frame.Size = UDim2.new(1, 0, 0, totalHeight)
+    end
+    
+    return section
+end
+
+-- Toggle элемент
+function MyCustomUI:CreateToggle(section, options)
+    local toggle = {}
+    options = options or {}
+    
+    toggle.Frame = Instance.new("Frame")
+    toggle.Frame.Name = "Toggle_" .. options.Name
+    toggle.Frame.Size = UDim2.new(1, 0, 0, 30)
+    toggle.Frame.BackgroundTransparency = 1
+    toggle.Frame.Parent = section.Frame
+    
+    toggle.Label = Instance.new("TextLabel")
+    toggle.Label.Name = "Label"
+    toggle.Label.Size = UDim2.new(0.7, 0, 1, 0)
+    toggle.Label.Position = UDim2.new(0, 0, 0, 0)
+    toggle.Label.BackgroundTransparency = 1
+    toggle.Label.Text = options.Name or "Toggle"
+    toggle.Label.TextColor3 = MyCustomUI.Colors.Text
+    toggle.Label.TextSize = 13
+    toggle.Label.Font = Enum.Font.Gotham
+    toggle.Label.TextXAlignment = Enum.TextXAlignment.Left
+    toggle.Label.Parent = toggle.Frame
+    
+    toggle.Button = Instance.new("TextButton")
+    toggle.Button.Name = "ToggleButton"
+    toggle.Button.Size = UDim2.new(0, 50, 0, 25)
+    toggle.Button.Position = UDim2.new(1, -50, 0, 2)
+    toggle.Button.BackgroundColor3 = MyCustomUI.Colors.Secondary
+    toggle.Button.Text = ""
+    toggle.Button.Parent = toggle.Frame
+    
+    local buttonCorner = Instance.new("UICorner")
+    buttonCorner.CornerRadius = UDim.new(0, 12)
+    buttonCorner.Parent = toggle.Button
+    
+    toggle.Switch = Instance.new("Frame")
+    toggle.Switch.Name = "Switch"
+    toggle.Switch.Size = UDim2.new(0, 21, 0, 21)
+    toggle.Switch.Position = UDim2.new(0, 2, 0, 2)
+    toggle.Switch.BackgroundColor3 = MyCustomUI.Colors.Text
+    toggle.Switch.Parent = toggle.Button
+    
+    local switchCorner = Instance.new("UICorner")
+    switchCorner.CornerRadius = UDim.new(0, 10)
+    switchCorner.Parent = toggle.Switch
+    
+    toggle.State = options.Default or false
+    toggle.Callback = options.Callback or function() end
+    
+    -- Анимация переключения
+    function toggle:SetState(state)
+        self.State = state
+        local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        
+        if state then
+            local tween = TweenService:Create(self.Switch, tweenInfo, {
+                Position = UDim2.new(0, 27, 0, 2),
+                BackgroundColor3 = MyCustomUI.Colors.Success
+            })
+            tween:Play()
+            self.Button.BackgroundColor3 = MyCustomUI.Colors.Primary
+        else
+            local tween = TweenService:Create(self.Switch, tweenInfo, {
+                Position = UDim2.new(0, 2, 0, 2),
+                BackgroundColor3 = MyCustomUI.Colors.Text
+            })
+            tween:Play()
+            self.Button.BackgroundColor3 = MyCustomUI.Colors.Secondary
+        end
+        
+        self.Callback(state)
+    end
+    
+    toggle.Button.MouseButton1Click:Connect(function()
+        toggle:SetState(not toggle.State)
+    end)
+    
+    toggle:SetState(toggle.State)
+    table.insert(section.Elements, toggle.Frame)
+    section:UpdateSize()
+    
+    return toggle
+end
+
+-- Button элемент
+function MyCustomUI:CreateButton(section, options)
+    local button = {}
+    options = options or {}
+    
+    button.Frame = Instance.new("Frame")
+    button.Frame.Name = "Button_" .. options.Name
+    button.Frame.Size = UDim2.new(1, 0, 0, 35)
+    button.Frame.BackgroundTransparency = 1
+    button.Frame.Parent = section.Frame
+    
+    button.Button = Instance.new("TextButton")
+    button.Button.Name = "MainButton"
+    button.Button.Size = UDim2.new(1, 0, 1, 0)
+    button.Button.BackgroundColor3 = MyCustomUI.Colors.Primary
+    button.Button.Text = options.Name or "Button"
+    button.Button.TextColor3 = MyCustomUI.Colors.Text
+    button.Button.TextSize = 13
+    button.Button.Font = Enum.Font.GothamBold
+    button.Button.Parent = button.Frame
+    
+    local buttonCorner = Instance.new("UICorner")
+    buttonCorner.CornerRadius = UDim.new(0, 6)
+    buttonCorner.Parent = button.Button
+    
+    button.Callback = options.Callback or function() end
+    
+    -- Эффекты при наведении
+    button.Button.MouseEnter:Connect(function()
+        local tween = TweenService:Create(button.Button, TweenInfo.new(0.2), {
+            BackgroundColor3 = Color3.fromRGB(
+                math.floor(MyCustomUI.Colors.Primary.R * 255 * 0.8),
+                math.floor(MyCustomUI.Colors.Primary.G * 255 * 0.8),
+                math.floor(MyCustomUI.Colors.Primary.B * 255 * 0.8)
+            )
+        })
+        tween:Play()
+    end)
+    
+    button.Button.MouseLeave:Connect(function()
+        local tween = TweenService:Create(button.Button, TweenInfo.new(0.2), {
+            BackgroundColor3 = MyCustomUI.Colors.Primary
+        })
+        tween:Play()
+    end)
+    
+    button.Button.MouseButton1Click:Connect(function()
+        button.Callback()
+    end)
+    
+    table.insert(section.Elements, button.Frame)
+    section:UpdateSize()
+    
+    return button
+end
+
+-- Slider элемент
+function MyCustomUI:CreateSlider(section, options)
+    local slider = {}
+    options = options or {}
+    
+    slider.Frame = Instance.new("Frame")
+    slider.Frame.Name = "Slider_" .. options.Name
+    slider.Frame.Size = UDim2.new(1, 0, 0, 60)
+    slider.Frame.BackgroundTransparency = 1
+    slider.Frame.Parent = section.Frame
+    
+    slider.Label = Instance.new("TextLabel")
+    slider.Label.Name = "Label"
+    slider.Label.Size = UDim2.new(1, 0, 0, 20)
+    slider.Label.BackgroundTransparency = 1
+    slider.Label.Text = options.Name or "Slider"
+    slider.Label.TextColor3 = MyCustomUI.Colors.Text
+    slider.Label.TextSize = 13
+    slider.Label.Font = Enum.Font.Gotham
+    slider.Label.TextXAlignment = Enum.TextXAlignment.Left
+    slider.Label.Parent = slider.Frame
+    
+    slider.ValueLabel = Instance.new("TextLabel")
+    slider.ValueLabel.Name = "ValueLabel"
+    slider.ValueLabel.Size = UDim2.new(0, 50, 0, 20)
+    slider.ValueLabel.Position = UDim2.new(1, -50, 0, 0)
+    slider.ValueLabel.BackgroundTransparency = 1
+    slider.ValueLabel.Text = tostring(options.Default or 50)
+    slider.ValueLabel.TextColor3 = MyCustomUI.Colors.Primary
+    slider.ValueLabel.TextSize = 13
+    slider.ValueLabel.Font = Enum.Font.GothamBold
+    slider.ValueLabel.TextXAlignment = Enum.TextXAlignment.Right
+    slider.ValueLabel.Parent = slider.Frame
+    
+    slider.Track = Instance.new("Frame")
+    slider.Track.Name = "Track"
+    slider.Track.Size = UDim2.new(1, 0, 0, 5)
+    slider.Track.Position = UDim2.new(0, 0, 0, 30)
+    slider.Track.BackgroundColor3 = MyCustomUI.Colors.Secondary
+    slider.Track.BorderSizePixel = 0
+    slider.Track.Parent = slider.Frame
+    
+    local trackCorner = Instance.new("UICorner")
+    trackCorner.CornerRadius = UDim.new(0, 3)
+    trackCorner.Parent = slider.Track
+    
+    slider.Fill = Instance.new("Frame")
+    slider.Fill.Name = "Fill"
+    slider.Fill.Size = UDim2.new(0, 0, 1, 0)
+    slider.Fill.BackgroundColor3 = MyCustomUI.Colors.Primary
+    slider.Fill.BorderSizePixel = 0
+    slider.Fill.Parent = slider.Track
+    
+    local fillCorner = Instance.new("UICorner")
+    fillCorner.CornerRadius = UDim.new(0, 3)
+    fillCorner.Parent = slider.Fill
+    
+    slider.Handle = Instance.new("TextButton")
+    slider.Handle.Name = "Handle"
+    slider.Handle.Size = UDim2.new(0, 15, 0, 15)
+    slider.Handle.Position = UDim2.new(0, -7, 0, -5)
+    slider.Handle.BackgroundColor3 = MyCustomUI.Colors.Accent
+    slider.Handle.Text = ""
+    slider.Handle.Parent = slider.Track
+    
+    local handleCorner = Instance.new("UICorner")
+    handleCorner.CornerRadius = UDim.new(0, 7)
+    handleCorner.Parent = slider.Handle
+    
+    slider.Min = options.Min or 0
+    slider.Max = options.Max or 100
+    slider.Default = options.Default or 50
+    slider.Value = slider.Default
+    slider.Callback = options.Callback or function() end
+    
+    function slider:SetValue(value)
+        value = math.clamp(value, self.Min, self.Max)
+        self.Value = value
+        
+        local percentage = (value - self.Min) / (self.Max - self.Min)
+        self.Fill.Size = UDim2.new(percentage, 0, 1, 0)
+        self.Handle.Position = UDim2.new(percentage, -7, 0, -5)
+        self.ValueLabel.Text = tostring(math.floor(value))
+        
+        self.Callback(value)
+    end
+    
+    -- Drag логика
+    local dragging = false
+    
+    slider.Handle.MouseButton1Down:Connect(function()
+        dragging = true
+    end)
+    
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end)
+    
+    slider.Track.MouseButton1Down:Connect(function(x, y)
+        local relativeX = x - slider.Track.AbsolutePosition.X
+        local percentage = math.clamp(relativeX / slider.Track.AbsoluteSize.X, 0, 1)
+        local value = slider.Min + percentage * (slider.Max - slider.Min)
+        slider:SetValue(value)
+    end)
+    
+    RunService.RenderStepped:Connect(function()
+        if dragging then
+            local mouse = UserInputService:GetMouseLocation()
+            local relativeX = mouse.X - slider.Track.AbsolutePosition.X
+            local percentage = math.clamp(relativeX / slider.Track.AbsoluteSize.X, 0, 1)
+            local value = slider.Min + percentage * (slider.Max - slider.Min)
+            slider:SetValue(value)
+        end
+    end)
+    
+    slider:SetValue(slider.Default)
+    table.insert(section.Elements, slider.Frame)
+    section:UpdateSize()
+    
+    return slider
+end
+
+return MyCustomUI
