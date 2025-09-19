@@ -1,3 +1,4 @@
+-- Загрузка вашей библиотеки
 local Zypher = loadstring(game:HttpGet("https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/library"))()
 
 -- Создание главного окна
@@ -23,6 +24,114 @@ end
 local SpeedBoostModule = loadModule("https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/2", "Speed Boost")
 local AntiEffectsModule = loadModule("https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/1", "Anti Effects")
 local ESPModule = loadModule("https://raw.githubusercontent.com/leshk19029/sphirit/refs/heads/main/esp", "ESP")
+
+-- Создаем кружок для меню
+local function createFloatingCircle()
+    local circle = Instance.new("TextButton")
+    circle.Name = "PURYFloatingCircle"
+    circle.Size = UDim2.new(0, 50, 0, 50)
+    circle.Position = UDim2.new(0, 20, 0, 20)
+    circle.BackgroundColor3 = Color3.fromRGB(60, 120, 200)
+    circle.Text = "P"
+    circle.TextColor3 = Color3.fromRGB(255, 255, 255)
+    circle.TextSize = 20
+    circle.Font = Enum.Font.GothamBold
+    circle.BorderSizePixel = 0
+    circle.ZIndex = 100
+    circle.Parent = window.ScreenGui
+    
+    -- Делаем кружок круглым
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(1, 0)
+    corner.Parent = circle
+    
+    -- Добавляем тень/эффект
+    local shadow = Instance.new("Frame")
+    shadow.Size = UDim2.new(1, 0, 1, 0)
+    shadow.BackgroundColor3 = Color3.fromRGB(40, 80, 160)
+    shadow.BorderSizePixel = 0
+    shadow.ZIndex = 99
+    shadow.Parent = circle
+    
+    local shadowCorner = Instance.new("UICorner")
+    shadowCorner.CornerRadius = UDim.new(1, 0)
+    shadowCorner.Parent = shadow
+    
+    -- Анимация при наведении
+    circle.MouseEnter:Connect(function()
+        game:GetService("TweenService"):Create(
+            circle,
+            TweenInfo.new(0.2),
+            {Size = UDim2.new(0, 55, 0, 55), BackgroundColor3 = Color3.fromRGB(80, 160, 255)}
+        ):Play()
+    end)
+    
+    circle.MouseLeave:Connect(function()
+        game:GetService("TweenService"):Create(
+            circle,
+            TweenInfo.new(0.2),
+            {Size = UDim2.new(0, 50, 0, 50), BackgroundColor3 = Color3.fromRGB(60, 120, 200)}
+        ):Play()
+    end)
+    
+    -- Функционал перетаскивания
+    local dragging = false
+    local dragStart = nil
+    local startPos = nil
+    
+    circle.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = circle.Position
+            
+            -- Анимация нажатия
+            game:GetService("TweenService"):Create(
+                circle,
+                TweenInfo.new(0.1),
+                {Size = UDim2.new(0, 45, 0, 45), BackgroundColor3 = Color3.fromRGB(40, 100, 220)}
+            ):Play()
+        end
+    end)
+    
+    circle.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+            
+            -- Возвращаем размер
+            game:GetService("TweenService"):Create(
+                circle,
+                TweenInfo.new(0.1),
+                {Size = UDim2.new(0, 50, 0, 50), BackgroundColor3 = Color3.fromRGB(60, 120, 200)}
+            ):Play()
+            
+            -- Если было короткое нажатие (не перетаскивание), открываем меню
+            if (input.Position - dragStart).Magnitude < 10 then
+                window:Toggle()
+            end
+        end
+    end)
+    
+    -- Обработка перетаскивания
+    game:GetService("UserInputService").InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - dragStart
+            circle.Position = UDim2.new(
+                0, math.clamp(startPos.X.Offset + delta.X, 0, workspace.CurrentCamera.ViewportSize.X - 50),
+                0, math.clamp(startPos.Y.Offset + delta.Y, 0, workspace.CurrentCamera.ViewportSize.Y - 50)
+            )
+        end
+    end)
+    
+    -- Функция для открытия/закрытия по клику
+    circle.MouseButton1Click:Connect(function()
+        if not dragging then
+            window:Toggle()
+        end
+    end)
+    
+    return circle
+end
 
 -- Создаем вкладку Main
 local mainTab = window:CreateTab("Main")
@@ -86,6 +195,9 @@ end
 
 -- Добавляем информационную метку
 window:CreateLabel(mainTab, " ")
-window:CreateLabel(mainTab, "Press LeftControl to toggle menu")
+window:CreateLabel(mainTab, "Click the PURY circle to toggle menu")
+
+-- Создаем кружок ПОСЛЕ создания всех элементов интерфейса
+local floatingCircle = createFloatingCircle()
 
 print("PURY Menu Loaded Successfully!")
