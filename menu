@@ -1,55 +1,36 @@
-local CustomUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/library"))()
+local MyLibrary = loadstring(game:HttpGet("https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/library"))()
 
--- Создание интерфейса
-local ui = CustomUI.new({
-    Name = "Мой Интерфейс",
-    Size = UDim2.new(0, 700, 0, 500),
-    Position = UDim2.new(0.5, 0, 0.5, 0)
+local UI = MyLibrary:Create({
+    Name = "МОЯ БИБЛИОТЕКА",
+    Keybind = "RightShift"
 })
 
--- Добавление вкладок
-local mainTab = ui:AddTab("Основное", "settings")
-local settingsTab = ui:AddTab("Настройки", "sliders")
-local infoTab = ui:AddTab("Информация", "info")
+local MainTab = UI:CreateTab("Главная")
+local CombatTab = UI:CreateTab("Бой")
 
--- Добавление секций на первую вкладку
-local combatSection = ui:AddSection(mainTab, "Боевые функции")
-local movementSection = ui:AddSection(mainTab, "Движение")
-
--- Добавление элементов управления
-ui:AddToggle(combatSection, {
-    Text = "Аимбот",
+-- Добавляем элементы
+local Toggle1 = MainTab:AddToggle({
+    Name = "Включить функции",
     Default = false,
     Callback = function(value)
-        print("Аимбот:", value)
+        print("Toggle:", value)
     end
 })
 
-ui:AddSlider(combatSection, {
-    Text = "Сила аимбота",
+local Button1 = MainTab:AddButton({
+    Name = "Тестовая кнопка",
+    Callback = function()
+        print("Кнопка нажата!")
+    end
+})
+
+local Slider1 = MainTab:AddSlider({
+    Name = "Скорость",
     Min = 0,
     Max = 100,
     Default = 50,
-    Callback = function(value)
-        print("Сила аимбота:", value)
-    end
-})
-
-ui:AddButton(movementSection, {
-    Text = "Включить полет",
-    Callback = function()
-        print("Полёт активирован")
-    end
-})
-
-ui:AddDropdown(movementSection, {
-    Text = "Скорость движения",
-    Options = {"Медленно", "Нормально", "Быстро", "Очень быстро"},
-    Default = "Нормально",
+    Round = 1,
     Callback = function(value)
         print("Скорость:", value)
     end
 })
-
--- Показать интерфейс
-ui:Toggle(true)
