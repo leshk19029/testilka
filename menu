@@ -1,5 +1,4 @@
--- Загрузка вашей библиотеки
-local Zypher = loadstring(game:HttpGet("https://raw.githubusercontent.com/your-username/your-repo/main/zypher_mobile.lua"))()
+local Zypher = loadstring(game:HttpGet("https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/library"))()
 
 -- Создание главного окна
 local window = Zypher.new("PURY MENU", Enum.KeyCode.LeftControl, Color3.fromRGB(60, 120, 200))
