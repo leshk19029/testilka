@@ -1,56 +1,59 @@
-local MyCustomUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/library"))()
+local Compkiller = loadstring(game:HttpGet("https://raw.githubusercontent.com/4lpaca-pin/CompKiller/refs/heads/main/src/source.luau"))();
 
--- Создание окна
-local window = MyCustomUI:CreateWindow({
-    Name = "Мое Кастомное Меню",
-    Keybind = Enum.KeyCode.RightShift
-})
+-- Создание окна с темным фоном
+local Window = Compkiller.new({
+    Name = "SPEED MENU",
+    Keybind = "RightAlt",
+    Logo = "rbxassetid://120245531583106",
+    Scale = Compkiller.Scale.Window,
+    TextSize = 15,
+});
 
--- Создание секций
-local mainSection = window:CreateSection("Основные настройки")
-local visualSection = window:CreateSection("Визуальные настройки")
+-- Создание вкладки
+local SpeedTab = Window:DrawTab({
+    Name = "Speed",
+    Icon = "zap", -- Иконка молнии
+    EnableScrolling = true
+});
 
--- Добавление элементов
-local toggle = window:CreateToggle(mainSection, {
-    Name = "Включить функцию",
+-- Создание секции с темным фоном
+local SpeedSection = SpeedTab:DrawSection({
+    Name = "Speed Controls",
+    Position = 'left'
+});
+
+-- Добавление переключателя Speed Boost
+local SpeedToggle = SpeedSection:AddToggle({
+    Name = "Speed Boost",
+    Flag = "Speed_Boost_Toggle",
     Default = false,
-    Callback = function(state)
-        print("Функция:", state)
-    end
-})
+    Callback = function(enabled)
+        if enabled then
+            print("Speed Boost активирован!")
+            -- Здесь будет код активации увеличения скорости
+        else
+            print("Speed Boost деактивирован!")
+            -- Здесь будет код деактивации увеличения скорости
+        end
+    end,
+});
 
-local slider = window:CreateSlider(mainSection, {
-    Name = "Скорость",
+-- Добавление слайдера для настройки скорости
+local SpeedSlider = SpeedSection:AddSlider({
+    Name = "Speed Value",
     Min = 0,
-    Max = 100,
-    Default = 50,
+    Max = 25,
+    Default = 16,
+    Round = 0,
+    Flag = "Speed_Value_Slider",
     Callback = function(value)
-        print("Скорость:", value)
+        print("Установлена скорость:", value)
+        -- Здесь будет код установки значения скорости
     end
-})
+});
 
-local button = window:CreateButton(mainSection, {
-    Name = "Активировать",
-    Callback = function()
-        print("Функция активирована!")
-    end
-})
-
--- Визуальные настройки
-window:CreateToggle(visualSection, {
-    Name = "Эффекты",
-    Default = true,
-    Callback = function(state)
-        print("Эффекты:", state)
-    end
-})
-
-window:CreateSlider(visualSection, {
-    Name = "Яркость",
-    Min = 0,
-    Max = 100,
-    Default = 75,
-    Callback = function(value)
-        print("Яркость:", value)
-    end
-})
+-- Добавление вспомогательного текста
+SpeedSection:AddParagraph({
+    Title = "Информация",
+    Content = "Speed Boost: Включает/выключает ускорение\nSpeed Value: Устанавливает значение скорости (0-25)"
+});
