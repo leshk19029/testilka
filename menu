@@ -1,4 +1,4 @@
-local UI = require('https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/library')
+local UI = loadstring(game:HttpGet('https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/library'))()
 
 -- Создание окна
 local window = UI:CreateWindow("Мое окно")
