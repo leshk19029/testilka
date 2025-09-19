@@ -1,5 +1,4 @@
--- Загрузка вашей библиотеки
-local Zypher = loadstring(game:HttpGet("https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/library"))()
+local Zypher = require(script.Parent.Zypher) -- Adjust path to where Zypher library is located
 
 -- Create the UI
 local ui = Zypher.new("My Menu", Enum.KeyCode.RightShift, Color3.fromRGB(40, 40, 40))
@@ -7,8 +6,8 @@ local ui = Zypher.new("My Menu", Enum.KeyCode.RightShift, Color3.fromRGB(40, 40,
 -- Create Main tab
 local mainTab = ui:CreateTab("Main")
 
--- Create Anti-Effects toggle
-local antiEffectsToggle = ui:CreateToggle(mainTab, "Anti-Effects", false, function(value)
+-- Create Anti-Effects toggle, enabled by default
+local antiEffectsToggle = ui:CreateToggle(mainTab, "Anti-Effects", true, function(value)
     print("Anti-Effects is now: " .. tostring(value))
     -- Add your Anti-Effects logic here
     if value then
@@ -22,3 +21,6 @@ end)
 
 -- Optional: Add a label for context
 ui:CreateLabel(mainTab, "Toggle Anti-Effects to disable visual effects")
+
+-- Show the UI immediately
+ui:Toggle()
