@@ -1,53 +1,24 @@
 -- Загрузка вашей библиотеки
 local Zypher = loadstring(game:HttpGet("https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/library"))()
 
--- Create the main UI
-local ui = Zypher.new("Sample Menu", Enum.KeyCode.RightShift, Color3.fromRGB(0, 120, 215))
+-- Create the UI
+local ui = Zypher.new("My Menu", Enum.KeyCode.RightShift, Color3.fromRGB(40, 40, 40))
 
--- Create tabs
+-- Create Main tab
 local mainTab = ui:CreateTab("Main")
-local settingsTab = ui:CreateTab("Settings")
-local infoTab = ui:CreateTab("Info")
 
--- Main Tab: Add buttons and toggles
-ui:CreateButton(mainTab, "Teleport to Center", function()
-    game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(0, 5, 0)
-end)
-
-local speedToggle = ui:CreateToggle(mainTab, "Speed Boost", false, function(value)
-    local player = game.Players.LocalPlayer
-    if player.Character and player.Character:FindFirstChild("Humanoid") then
-        player.Character.Humanoid.WalkSpeed = value and 32 or 16
+-- Create Anti-Effects toggle
+local antiEffectsToggle = ui:CreateToggle(mainTab, "Anti-Effects", false, function(value)
+    print("Anti-Effects is now: " .. tostring(value))
+    -- Add your Anti-Effects logic here
+    if value then
+        -- Code to disable effects (e.g., remove screen effects, post-processing, etc.)
+        -- Example: game.Lighting.ColorCorrection.Enabled = false
+    else
+        -- Code to enable effects
+        -- Example: game.Lighting.ColorCorrection.Enabled = true
     end
 end)
 
-ui:CreateSlider(mainTab, "Jump Power", 50, 200, 50, function(value)
-    local player = game.Players.LocalPlayer
-    if player.Character and player.Character:FindFirstChild("Humanoid") then
-        player.Character.Humanoid.JumpPower = value
-    end
-end)
-
--- Settings Tab: Add settings controls
-ui:CreateLabel(settingsTab, "Game Settings")
-
-ui:CreateSlider(settingsTab, "Brightness", 0, 10, 0, function(value)
-    game.Lighting.Brightness = value
-end)
-
-ui:CreateToggle(settingsTab, "Fullbright", false, function(value)
-    game.Lighting.GlobalShadows = not value
-end)
-
--- Info Tab: Add information
-ui:CreateLabel(infoTab, "Game Information")
-ui:CreateLabel(infoTab, "Created by: Your Name")
-ui:CreateLabel(infoTab, "Version: 1.0.0")
-ui:CreateButton(infoTab, "Print Credits", function()
-    print("Menu created using Zypher UI Library!")
-end)
-
--- Open the menu automatically
-ui:Toggle()
-
-return ui
+-- Optional: Add a label for context
+ui:CreateLabel(mainTab, "Toggle Anti-Effects to disable visual effects")
