@@ -1,385 +1,559 @@
--- Библиотека UI компонентов с функцией перетаскивания
-local Library = {}
+--[[
+    Zypher Library - Mobile Compatible Version
+    Original by Zypher
+    Mobile support added
+]]
 
--- Цвета библиотеки
-Library.Colors = {
-    Background = Color3.fromRGB(40, 40, 40),
-    Secondary = Color3.fromRGB(30, 30, 30),
-    Accent = Color3.fromRGB(25, 25, 25),
-    Text = Color3.fromRGB(255, 255, 255),
-    Button = Color3.fromRGB(60, 60, 60),
-    ButtonHover = Color3.fromRGB(70, 70, 70),
-    ToggleOn = Color3.fromRGB(0, 170, 255),
-    ToggleOff = Color3.fromRGB(80, 80, 80),
-    Border = Color3.fromRGB(60, 60, 60)
-}
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
 
--- Функция перетаскивания для окон и элементов
-function Library:Draggable(frame, handle)
-    handle = handle or frame
+local Zypher = {}
+Zypher.__index = Zypher
+
+-- Mobile detection
+local IS_MOBILE = UserInputService.TouchEnabled and not UserInputService.MouseEnabled
+
+function Zypher.new(title, mainkey, color)
+    local self = setmetatable({}, Zypher)
     
-    local dragging = false
-    local dragInput, dragStart, startPos
+    self.Title = title or "UI Library"
+    self.MainKey = mainkey or Enum.KeyCode.RightShift
+    self.Color = color or Color3.fromRGB(40, 40, 40)
+    self.Tabs = {}
+    self.Enabled = false
+    self.Draggable = true
+    self.DragSpeed = IS_MOBILE and 0.8 or 1
+    
+    self:CreateUI()
+    self:BindEvents()
+    
+    return self
+end
 
-    -- Обработчик для мыши
-    handle.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
+function Zypher:CreateUI()
+    -- ScreenGui
+    self.ScreenGui = Instance.new("ScreenGui")
+    self.ScreenGui.Name = "ZypherUI"
+    self.ScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+    self.ScreenGui.ResetOnSpawn = false
+    self.ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+    -- Main Frame
+    self.MainFrame = Instance.new("Frame")
+    self.MainFrame.Name = "MainFrame"
+    self.MainFrame.Size = UDim2.new(0, 500, 0, 350)
+    self.MainFrame.Position = UDim2.new(0.5, -250, 0.5, -175)
+    self.MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    self.MainFrame.BorderSizePixel = 0
+    self.MainFrame.Active = true
+    self.MainFrame.Selectable = true
+    self.MainFrame.ClipsDescendants = true
+    self.MainFrame.Parent = self.ScreenGui
+
+    -- Title Bar
+    self.TitleBar = Instance.new("Frame")
+    self.TitleBar.Name = "TitleBar"
+    self.TitleBar.Size = UDim2.new(1, 0, 0, 30)
+    self.TitleBar.Position = UDim2.new(0, 0, 0, 0)
+    self.TitleBar.BackgroundColor3 = self.Color
+    self.TitleBar.BorderSizePixel = 0
+    self.TitleBar.Active = true
+    self.TitleBar.Selectable = true
+    self.TitleBar.Parent = self.MainFrame
+
+    -- Title Text
+    self.TitleText = Instance.new("TextLabel")
+    self.TitleText.Name = "TitleText"
+    self.TitleText.Size = UDim2.new(0, 200, 1, 0)
+    self.TitleText.Position = UDim2.new(0, 10, 0, 0)
+    self.TitleText.BackgroundTransparency = 1
+    self.TitleText.Text = self.Title
+    self.TitleText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    self.TitleText.TextSize = 14
+    self.TitleText.Font = Enum.Font.Gotham
+    self.TitleText.TextXAlignment = Enum.TextXAlignment.Left
+    self.TitleText.Parent = self.TitleBar
+
+    -- Close Button
+    self.CloseButton = Instance.new("TextButton")
+    self.CloseButton.Name = "CloseButton"
+    self.CloseButton.Size = UDim2.new(0, 30, 1, 0)
+    self.CloseButton.Position = UDim2.new(1, -30, 0, 0)
+    self.CloseButton.BackgroundTransparency = 1
+    self.CloseButton.Text = "X"
+    self.CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    self.CloseButton.TextSize = 14
+    self.CloseButton.Font = Enum.Font.Gotham
+    self.CloseButton.Parent = self.TitleBar
+    self:MakeElementTouchFriendly(self.CloseButton)
+
+    -- Tabs Container
+    self.TabsContainer = Instance.new("Frame")
+    self.TabsContainer.Name = "TabsContainer"
+    self.TabsContainer.Size = UDim2.new(1, 0, 0, 30)
+    self.TabsContainer.Position = UDim2.new(0, 0, 0, 30)
+    self.TabsContainer.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    self.TabsContainer.BorderSizePixel = 0
+    self.TabsContainer.Parent = self.MainFrame
+
+    -- Tabs UIListLayout
+    self.TabsLayout = Instance.new("UIListLayout")
+    self.TabsLayout.Name = "TabsLayout"
+    self.TabsLayout.FillDirection = Enum.FillDirection.Horizontal
+    self.TabsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    self.TabsLayout.Padding = UDim.new(0, 0)
+    self.TabsLayout.Parent = self.TabsContainer
+
+    -- Content Frame
+    self.ContentFrame = Instance.new("Frame")
+    self.ContentFrame.Name = "ContentFrame"
+    self.ContentFrame.Size = UDim2.new(1, 0, 1, -60)
+    self.ContentFrame.Position = UDim2.new(0, 0, 0, 60)
+    self.ContentFrame.BackgroundTransparency = 1
+    self.ContentFrame.ClipsDescendants = true
+    self.ContentFrame.Parent = self.MainFrame
+
+    -- Content ScrollingFrame
+    self.ContentScrolling = Instance.new("ScrollingFrame")
+    self.ContentScrolling.Name = "ContentScrolling"
+    self.ContentScrolling.Size = UDim2.new(1, 0, 1, 0)
+    self.ContentScrolling.Position = UDim2.new(0, 0, 0, 0)
+    self.ContentScrolling.BackgroundTransparency = 1
+    self.ContentScrolling.BorderSizePixel = 0
+    self.ContentScrolling.ScrollBarThickness = IS_MOBILE and 8 or 4
+    self.ContentScrolling.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 100)
+    self.ContentScrolling.CanvasSize = UDim2.new(0, 0, 0, 0)
+    self.ContentScrolling.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    self.ContentScrolling.Parent = self.ContentFrame
+
+    -- Content Layout
+    self.ContentLayout = Instance.new("UIListLayout")
+    self.ContentLayout.Name = "ContentLayout"
+    self.ContentLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    self.ContentLayout.Padding = UDim.new(0, 5)
+    self.ContentLayout.Parent = self.ContentScrolling
+
+    -- Content Padding
+    self.ContentPadding = Instance.new("UIPadding")
+    self.ContentPadding.Name = "ContentPadding"
+    self.ContentPadding.PaddingLeft = UDim.new(0, 10)
+    self.ContentPadding.PaddingRight = UDim.new(0, 10)
+    self.ContentPadding.PaddingTop = UDim.new(0, 10)
+    self.ContentPadding.PaddingBottom = UDim.new(0, 10)
+    self.ContentPadding.Parent = self.ContentScrolling
+
+    -- Mobile Toggle Button (only on mobile)
+    if IS_MOBILE then
+        self.MobileToggleButton = Instance.new("TextButton")
+        self.MobileToggleButton.Name = "MobileToggleButton"
+        self.MobileToggleButton.Size = UDim2.new(0, 60, 0, 60)
+        self.MobileToggleButton.Position = UDim2.new(0, 20, 0, 20)
+        self.MobileToggleButton.BackgroundColor3 = self.Color
+        self.MobileToggleButton.Text = "≡"
+        self.MobileToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        self.MobileToggleButton.TextSize = 24
+        self.MobileToggleButton.Font = Enum.Font.GothamBold
+        self.MobileToggleButton.BorderSizePixel = 0
+        self.MobileToggleButton.ZIndex = 100
+        self.MobileToggleButton.Parent = self.ScreenGui
+        self:MakeElementTouchFriendly(self.MobileToggleButton)
+        
+        self.MobileToggleButton.MouseButton1Click:Connect(function()
+            self:Toggle()
+        end)
+    end
+
+    -- Initially hide the UI
+    self.MainFrame.Visible = false
+end
+
+function Zypher:BindEvents()
+    -- Keybind toggle
+    UserInputService.InputBegan:Connect(function(input)
+        if input.KeyCode == self.MainKey and not IS_MOBILE then
+            self:Toggle()
+        end
+    end)
+
+    -- Close button
+    self.CloseButton.MouseButton1Click:Connect(function()
+        self:Toggle()
+    end)
+
+    -- Drag handling
+    if IS_MOBILE then
+        self:SetupMobileDrag()
+    else
+        self:SetupDesktopDrag()
+    end
+end
+
+function Zypher:SetupMobileDrag()
+    local dragStart = nil
+    local startPos = nil
+    local isDragging = false
+
+    self.TitleBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch then
             dragStart = input.Position
-            startPos = frame.Position
+            startPos = self.MainFrame.Position
+            isDragging = true
             
             input.Changed:Connect(function()
                 if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
+                    isDragging = false
                 end
             end)
         end
     end)
 
-    -- Обработчик для касаний
-    handle.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-            dragInput = input
-        end
-    end)
-
-    -- Обновление позиции
-    game:GetService("UserInputService").InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
+    self.TitleBar.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch and isDragging then
             local delta = input.Position - dragStart
-            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+            self.MainFrame.Position = UDim2.new(
+                startPos.X.Scale, 
+                startPos.X.Offset + delta.X * self.DragSpeed,
+                startPos.Y.Scale, 
+                startPos.Y.Offset + delta.Y * self.DragSpeed
+            )
         end
     end)
 end
 
--- Создание фрейма окна
-function Library:CreateWindow(name)
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = name
-    screenGui.Parent = game:GetService("CoreGui")
-    screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+function Zypher:SetupDesktopDrag()
+    local dragStart = nil
+    local startPos = nil
+    local dragging = false
 
-    local mainFrame = Instance.new("Frame")
-    mainFrame.Name = "MainFrame"
-    mainFrame.Size = UDim2.new(0, 400, 0, 300)
-    mainFrame.Position = UDim2.new(0.5, -200, 0.5, -150)
-    mainFrame.BackgroundColor3 = Library.Colors.Background
-    mainFrame.BorderColor3 = Library.Colors.Border
-    mainFrame.BorderSizePixel = 1
-    mainFrame.Parent = screenGui
+    self.TitleBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragStart = input.Position
+            startPos = self.MainFrame.Position
+            dragging = true
+            
+            local connection
+            connection = input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                    connection:Disconnect()
+                end
+            end)
+        end
+    end)
 
-    -- Заголовок окна
-    local titleBar = Instance.new("Frame")
-    titleBar.Name = "TitleBar"
-    titleBar.Size = UDim2.new(1, 0, 0, 30)
-    titleBar.BackgroundColor3 = Library.Colors.Secondary
-    titleBar.BorderSizePixel = 0
-    titleBar.Parent = mainFrame
-
-    local titleText = Instance.new("TextLabel")
-    titleText.Name = "Title"
-    titleText.Size = UDim2.new(1, -60, 1, 0)
-    titleText.Position = UDim2.new(0, 10, 0, 0)
-    titleText.BackgroundTransparency = 1
-    titleText.Text = name
-    titleText.TextColor3 = Library.Colors.Text
-    titleText.TextXAlignment = Enum.TextXAlignment.Left
-    titleText.Font = Enum.Font.Gotham
-    titleText.TextSize = 14
-    titleText.Parent = titleBar
-
-    -- Делаем окно перетаскиваемым за заголовок
-    Library:Draggable(mainFrame, titleBar)
-
-    -- Контейнер для элементов
-    local container = Instance.new("ScrollingFrame")
-    container.Name = "Container"
-    container.Size = UDim2.new(1, -20, 1, -50)
-    container.Position = UDim2.new(0, 10, 0, 40)
-    container.BackgroundTransparency = 1
-    container.BorderSizePixel = 0
-    container.ScrollBarThickness = 5
-    container.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    container.CanvasSize = UDim2.new(0, 0, 0, 0)
-    container.Parent = mainFrame
-
-    local layout = Instance.new("UIListLayout")
-    layout.Padding = UDim.new(0, 10)
-    layout.Parent = container
-
-    return {
-        ScreenGui = screenGui,
-        MainFrame = mainFrame,
-        Container = container,
-        TitleBar = titleBar
-    }
+    self.TitleBar.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement and dragging then
+            local delta = input.Position - dragStart
+            self.MainFrame.Position = UDim2.new(
+                startPos.X.Scale, 
+                startPos.X.Offset + delta.X,
+                startPos.Y.Scale, 
+                startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
 end
 
--- Создание кнопки
-function Library:CreateButton(parent, text, callback)
+function Zypher:MakeElementTouchFriendly(element)
+    if IS_MOBILE then
+        element.Active = true
+        element.Selectable = true
+        
+        if element:IsA("TextButton") or element:IsA("ImageButton") then
+            -- Add touch feedback
+            element.MouseButton1Down:Connect(function()
+                element.BackgroundTransparency = 0.7
+            end)
+            
+            element.MouseButton1Up:Connect(function()
+                element.BackgroundTransparency = 0
+            end)
+            
+            element.MouseLeave:Connect(function()
+                element.BackgroundTransparency = 0
+            end)
+        end
+    end
+end
+
+function Zypher:Toggle()
+    self.Enabled = not self.Enabled
+    self.MainFrame.Visible = self.Enabled
+    
+    if self.Enabled then
+        self.MainFrame:TweenPosition(
+            UDim2.new(0.5, -250, 0.5, -175),
+            Enum.EasingDirection.Out,
+            Enum.EasingStyle.Quad,
+            0.3,
+            true
+        )
+    end
+end
+
+function Zypher:CreateTab(name)
+    local tab = {}
+    tab.Name = name
+    tab.Buttons = {}
+    
+    -- Tab Button
+    tab.Button = Instance.new("TextButton")
+    tab.Button.Name = name .. "Tab"
+    tab.Button.Size = UDim2.new(0, 80, 1, 0)
+    tab.Button.BackgroundTransparency = 1
+    tab.Button.Text = name
+    tab.Button.TextColor3 = Color3.fromRGB(200, 200, 200)
+    tab.Button.TextSize = 14
+    tab.Button.Font = Enum.Font.Gotham
+    tab.Button.LayoutOrder = #self.Tabs + 1
+    tab.Button.Parent = self.TabsContainer
+    self:MakeElementTouchFriendly(tab.Button)
+    
+    -- Tab Content
+    tab.Content = Instance.new("ScrollingFrame")
+    tab.Content.Name = name .. "Content"
+    tab.Content.Size = UDim2.new(1, 0, 1, 0)
+    tab.Content.Position = UDim2.new(0, 0, 0, 0)
+    tab.Content.BackgroundTransparency = 1
+    tab.Content.BorderSizePixel = 0
+    tab.Content.ScrollBarThickness = IS_MOBILE and 8 or 4
+    tab.Content.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 100)
+    tab.Content.Visible = false
+    tab.Content.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    tab.Content.Parent = self.ContentScrolling
+    
+    -- Tab Content Layout
+    tab.ContentLayout = Instance.new("UIListLayout")
+    tab.ContentLayout.Name = "ContentLayout"
+    tab.ContentLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    tab.ContentLayout.Padding = UDim.new(0, 10)
+    tab.ContentLayout.Parent = tab.Content
+    
+    -- Tab Content Padding
+    tab.ContentPadding = Instance.new("UIPadding")
+    tab.ContentPadding.Name = "ContentPadding"
+    tab.ContentPadding.PaddingLeft = UDim.new(0, 5)
+    tab.ContentPadding.PaddingRight = UDim.new(0, 5)
+    tab.ContentPadding.PaddingTop = UDim.new(0, 5)
+    tab.ContentPadding.PaddingBottom = UDim.new(0, 5)
+    tab.ContentPadding.Parent = tab.Content
+    
+    -- Select first tab by default
+    if #self.Tabs == 0 then
+        self:SelectTab(tab)
+    end
+    
+    tab.Button.MouseButton1Click:Connect(function()
+        self:SelectTab(tab)
+    end)
+    
+    table.insert(self.Tabs, tab)
+    return tab
+end
+
+function Zypher:SelectTab(tab)
+    for _, existingTab in pairs(self.Tabs) do
+        existingTab.Content.Visible = false
+        existingTab.Button.TextColor3 = Color3.fromRGB(200, 200, 200)
+    end
+    
+    tab.Content.Visible = true
+    tab.Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+end
+
+function Zypher:CreateButton(tab, name, callback)
     local button = Instance.new("TextButton")
-    button.Name = "Button"
-    button.Size = UDim2.new(1, 0, 0, 35)
-    button.BackgroundColor3 = Library.Colors.Button
-    button.BorderColor3 = Library.Colors.Border
-    button.BorderSizePixel = 1
-    button.Text = text
-    button.TextColor3 = Library.Colors.Text
+    button.Name = name
+    button.Size = UDim2.new(1, -10, 0, IS_MOBILE and 40 or 30)
+    button.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+    button.BorderSizePixel = 0
+    button.Text = name
+    button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    button.TextSize = IS_MOBILE and 16 or 14
     button.Font = Enum.Font.Gotham
-    button.TextSize = 14
-    button.Parent = parent
-
-    -- Эффекты при наведении
-    button.MouseEnter:Connect(function()
-        button.BackgroundColor3 = Library.Colors.ButtonHover
-    end)
-
-    button.MouseLeave:Connect(function()
-        button.BackgroundColor3 = Library.Colors.Button
-    end)
-
-    -- Обработчик клика
+    button.Parent = tab.Content
+    self:MakeElementTouchFriendly(button)
+    
     button.MouseButton1Click:Connect(function()
         if callback then
             callback()
         end
     end)
-
+    
+    table.insert(tab.Buttons, button)
     return button
 end
 
--- Создание переключателя (toggle)
-function Library:CreateToggle(parent, text, default, callback)
-    local toggleFrame = Instance.new("Frame")
-    toggleFrame.Name = "Toggle"
-    toggleFrame.Size = UDim2.new(1, 0, 0, 25)
-    toggleFrame.BackgroundTransparency = 1
-    toggleFrame.Parent = parent
-
+function Zypher:CreateToggle(tab, name, default, callback)
+    local toggle = {}
+    toggle.Value = default or false
+    
+    local frame = Instance.new("Frame")
+    frame.Name = name .. "Toggle"
+    frame.Size = UDim2.new(1, -10, 0, IS_MOBILE and 40 or 30)
+    frame.BackgroundTransparency = 1
+    frame.Parent = tab.Content
+    
+    local label = Instance.new("TextLabel")
+    label.Name = "Label"
+    label.Size = UDim2.new(0.7, 0, 1, 0)
+    label.Position = UDim2.new(0, 0, 0, 0)
+    label.BackgroundTransparency = 1
+    label.Text = name
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.TextSize = IS_MOBILE and 16 or 14
+    label.Font = Enum.Font.Gotham
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = frame
+    
     local toggleButton = Instance.new("TextButton")
     toggleButton.Name = "ToggleButton"
     toggleButton.Size = UDim2.new(0, 40, 0, 20)
-    toggleButton.Position = UDim2.new(1, -40, 0, 0)
-    toggleButton.BackgroundColor3 = default and Library.Colors.ToggleOn or Library.Colors.ToggleOff
-    toggleButton.BorderColor3 = Library.Colors.Border
-    toggleButton.BorderSizePixel = 1
+    toggleButton.Position = UDim2.new(1, -40, 0.5, -10)
+    toggleButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+    toggleButton.BorderSizePixel = 0
     toggleButton.Text = ""
-    toggleButton.Parent = toggleFrame
-
-    local toggleCircle = Instance.new("Frame")
-    toggleCircle.Name = "ToggleCircle"
-    toggleCircle.Size = UDim2.new(0, 16, 0, 16)
-    toggleCircle.Position = UDim2.new(0, default and 20 or 2, 0, 2)
-    toggleCircle.BackgroundColor3 = Library.Colors.Text
-    toggleCircle.BorderSizePixel = 0
-    toggleCircle.Parent = toggleButton
-
-    local toggleText = Instance.new("TextLabel")
-    toggleText.Name = "ToggleText"
-    toggleText.Size = UDim2.new(1, -50, 1, 0)
-    toggleText.BackgroundTransparency = 1
-    toggleText.Text = text
-    toggleText.TextColor3 = Library.Colors.Text
-    toggleText.TextXAlignment = Enum.TextXAlignment.Left
-    toggleText.Font = Enum.Font.Gotham
-    toggleText.TextSize = 14
-    toggleText.Parent = toggleFrame
-
-    local isToggled = default
-
-    -- Функция переключения
-    local function toggle()
-        isToggled = not isToggled
-        toggleButton.BackgroundColor3 = isToggled and Library.Colors.ToggleOn or Library.Colors.ToggleOff
-        
-        local tween = game:GetService("TweenService"):Create(
-            toggleCircle,
-            TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-            {Position = UDim2.new(0, isToggled and 20 or 2, 0, 2)}
-        )
-        tween:Play()
-        
-        if callback then
-            callback(isToggled)
+    toggleButton.Parent = frame
+    self:MakeElementTouchFriendly(toggleButton)
+    
+    local toggleIndicator = Instance.new("Frame")
+    toggleIndicator.Name = "Indicator"
+    toggleIndicator.Size = UDim2.new(0, 18, 0, 18)
+    toggleIndicator.Position = UDim2.new(0, 1, 0, 1)
+    toggleIndicator.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    toggleIndicator.BorderSizePixel = 0
+    toggleIndicator.Parent = toggleButton
+    
+    local function updateToggle()
+        if toggle.Value then
+            toggleButton.BackgroundColor3 = self.Color
+            toggleIndicator:TweenPosition(UDim2.new(0, 21, 0, 1), "Out", "Quad", 0.2)
+        else
+            toggleButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+            toggleIndicator:TweenPosition(UDim2.new(0, 1, 0, 1), "Out", "Quad", 0.2)
         end
     end
-
-    toggleButton.MouseButton1Click:Connect(toggle)
-
-    return {
-        Frame = toggleFrame,
-        Set = function(self, value)
-            if isToggled ~= value then
-                toggle()
-            end
-        end,
-        Get = function(self)
-            return isToggled
-        end
-    }
-end
-
--- Создание слайдера
-function Library:CreateSlider(parent, text, min, max, default, callback)
-    local sliderFrame = Instance.new("Frame")
-    sliderFrame.Name = "Slider"
-    sliderFrame.Size = UDim2.new(1, 0, 0, 50)
-    sliderFrame.BackgroundTransparency = 1
-    sliderFrame.Parent = parent
-
-    local sliderText = Instance.new("TextLabel")
-    sliderText.Name = "SliderText"
-    sliderText.Size = UDim2.new(1, 0, 0, 20)
-    sliderText.BackgroundTransparency = 1
-    sliderText.Text = text
-    sliderText.TextColor3 = Library.Colors.Text
-    sliderText.TextXAlignment = Enum.TextXAlignment.Left
-    sliderText.Font = Enum.Font.Gotham
-    sliderText.TextSize = 14
-    sliderText.Parent = sliderFrame
-
-    local valueText = Instance.new("TextLabel")
-    valueText.Name = "ValueText"
-    valueText.Size = UDim2.new(0, 50, 0, 20)
-    valueText.Position = UDim2.new(1, -50, 0, 0)
-    valueText.BackgroundTransparency = 1
-    valueText.Text = tostring(default)
-    valueText.TextColor3 = Library.Colors.Text
-    valueText.TextXAlignment = Enum.TextXAlignment.Right
-    valueText.Font = Enum.Font.Gotham
-    valueText.TextSize = 14
-    valueText.Parent = sliderFrame
-
-    local track = Instance.new("Frame")
-    track.Name = "Track"
-    track.Size = UDim2.new(1, 0, 0, 5)
-    track.Position = UDim2.new(0, 0, 0, 30)
-    track.BackgroundColor3 = Library.Colors.ToggleOff
-    track.BorderSizePixel = 0
-    track.Parent = sliderFrame
-
-    local fill = Instance.new("Frame")
-    fill.Name = "Fill"
-    fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
-    fill.BackgroundColor3 = Library.Colors.ToggleOn
-    fill.BorderSizePixel = 0
-    fill.Parent = track
-
-    local handle = Instance.new("TextButton")
-    handle.Name = "Handle"
-    handle.Size = UDim2.new(0, 15, 0, 15)
-    handle.Position = UDim2.new((default - min) / (max - min), -7, 0.5, -7)
-    handle.BackgroundColor3 = Library.Colors.Text
-    handle.BorderSizePixel = 0
-    handle.Text = ""
-    handle.Parent = track
-
-    local dragging = false
-    local currentValue = default
-
-    -- Функция обновления слайдера
-    local function updateSlider(input)
-        local relativeX = (input.Position.X - track.AbsolutePosition.X) / track.AbsoluteSize.X
-        relativeX = math.clamp(relativeX, 0, 1)
-        
-        currentValue = math.floor(min + (max - min) * relativeX)
-        valueText.Text = tostring(currentValue)
-        fill.Size = UDim2.new(relativeX, 0, 1, 0)
-        handle.Position = UDim2.new(relativeX, -7, 0.5, -7)
-        
+    
+    toggleButton.MouseButton1Click:Connect(function()
+        toggle.Value = not toggle.Value
+        updateToggle()
         if callback then
-            callback(currentValue)
-        end
-    end
-
-    -- Обработчики для слайдера
-    handle.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            updateSlider(input)
+            callback(toggle.Value)
         end
     end)
-
-    handle.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = false
-        end
-    end)
-
-    track.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            updateSlider(input)
-        end
-    end)
-
-    game:GetService("UserInputService").InputChanged:Connect(function(input)
-        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            updateSlider(input)
-        end
-    end)
-
-    return {
-        Frame = sliderFrame,
-        GetValue = function(self)
-            return currentValue
-        end,
-        SetValue = function(self, value)
-            value = math.clamp(value, min, max)
-            currentValue = value
-            valueText.Text = tostring(value)
-            local relativeX = (value - min) / (max - min)
-            fill.Size = UDim2.new(relativeX, 0, 1, 0)
-            handle.Position = UDim2.new(relativeX, -7, 0.5, -7)
-        end
-    }
+    
+    updateToggle()
+    table.insert(tab.Buttons, frame)
+    return toggle
 end
 
--- Создание текстового поля
-function Library:CreateTextBox(parent, text, placeholder, callback)
-    local textBoxFrame = Instance.new("Frame")
-    textBoxFrame.Name = "TextBox"
-    textBoxFrame.Size = UDim2.new(1, 0, 0, 35)
-    textBoxFrame.BackgroundTransparency = 1
-    textBoxFrame.Parent = parent
-
-    local textBox = Instance.new("TextBox")
-    textBox.Name = "Input"
-    textBox.Size = UDim2.new(1, 0, 1, 0)
-    textBox.BackgroundColor3 = Library.Colors.Button
-    textBox.BorderColor3 = Library.Colors.Border
-    textBox.BorderSizePixel = 1
-    textBox.Text = text
-    textBox.PlaceholderText = placeholder
-    textBox.TextColor3 = Library.Colors.Text
-    textBox.Font = Enum.Font.Gotham
-    textBox.TextSize = 14
-    textBox.TextXAlignment = Enum.TextXAlignment.Left
-    textBox.Parent = textBoxFrame
-
-    textBox.FocusLost:Connect(function()
-        if callback then
-            callback(textBox.Text)
-        end
-    end)
-
-    return textBox
-end
-
--- Создание метки
-function Library:CreateLabel(parent, text)
+function Zypher:CreateSlider(tab, name, min, max, default, callback)
+    local slider = {}
+    slider.Value = default or min
+    
+    local frame = Instance.new("Frame")
+    frame.Name = name .. "Slider"
+    frame.Size = UDim2.new(1, -10, 0, IS_MOBILE and 60 or 40)
+    frame.BackgroundTransparency = 1
+    frame.Parent = tab.Content
+    
     local label = Instance.new("TextLabel")
     label.Name = "Label"
     label.Size = UDim2.new(1, 0, 0, 20)
+    label.Position = UDim2.new(0, 0, 0, 0)
+    label.BackgroundTransparency = 1
+    label.Text = name .. ": " .. tostring(slider.Value)
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.TextSize = IS_MOBILE and 16 or 14
+    label.Font = Enum.Font.Gotham
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = frame
+    
+    local sliderTrack = Instance.new("Frame")
+    sliderTrack.Name = "Track"
+    sliderTrack.Size = UDim2.new(1, 0, 0, 6)
+    sliderTrack.Position = UDim2.new(0, 0, 0, 25)
+    sliderTrack.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+    sliderTrack.BorderSizePixel = 0
+    sliderTrack.Parent = frame
+    
+    local sliderFill = Instance.new("Frame")
+    sliderFill.Name = "Fill"
+    sliderFill.Size = UDim2.new((slider.Value - min) / (max - min), 0, 1, 0)
+    sliderFill.Position = UDim2.new(0, 0, 0, 0)
+    sliderFill.BackgroundColor3 = self.Color
+    sliderFill.BorderSizePixel = 0
+    sliderFill.Parent = sliderTrack
+    
+    local sliderButton = Instance.new("TextButton")
+    sliderButton.Name = "SliderButton"
+    sliderButton.Size = UDim2.new(0, 15, 0, 15)
+    sliderButton.Position = UDim2.new((slider.Value - min) / (max - min), -7, 0.5, -7)
+    sliderButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    sliderButton.BorderSizePixel = 0
+    sliderButton.Text = ""
+    sliderButton.ZIndex = 2
+    sliderButton.Parent = sliderTrack
+    self:MakeElementTouchFriendly(sliderButton)
+    
+    local function updateSlider(value)
+        value = math.clamp(value, min, max)
+        slider.Value = value
+        label.Text = name .. ": " .. tostring(math.floor(value))
+        sliderFill.Size = UDim2.new((value - min) / (max - min), 0, 1, 0)
+        sliderButton.Position = UDim2.new((value - min) / (max - min), -7, 0.5, -7)
+        
+        if callback then
+            callback(value)
+        end
+    end
+    
+    local function slide(input)
+        if input.UserInputState == Enum.UserInputState.Begin then
+            local connection
+            connection = input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    connection:Disconnect()
+                end
+                
+                local pos = UDim2.new(0, math.clamp(input.Position.X - sliderTrack.AbsolutePosition.X, 0, sliderTrack.AbsoluteSize.X), 0, 0)
+                local value = min + (pos.X.Offset / sliderTrack.AbsoluteSize.X) * (max - min)
+                updateSlider(value)
+            end)
+        end
+    end
+    
+    sliderButton.InputBegan:Connect(slide)
+    sliderTrack.InputBegan:Connect(slide)
+    
+    table.insert(tab.Buttons, frame)
+    return slider
+end
+
+function Zypher:CreateLabel(tab, text)
+    local label = Instance.new("TextLabel")
+    label.Name = "Label"
+    label.Size = UDim2.new(1, -10, 0, 20)
     label.BackgroundTransparency = 1
     label.Text = text
-    label.TextColor3 = Library.Colors.Text
-    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.TextSize = IS_MOBILE and 16 or 14
     label.Font = Enum.Font.Gotham
-    label.TextSize = 14
-    label.Parent = parent
-
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = tab.Content
+    
+    table.insert(tab.Buttons, label)
     return label
 end
 
-return Library
+function Zypher:Destroy()
+    if self.ScreenGui then
+        self.ScreenGui:Destroy()
+    end
+end
+
+return Zypher
