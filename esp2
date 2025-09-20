@@ -15,12 +15,9 @@ local TweenService = game:GetService("TweenService")
 
 -- Настройки
 local IS_ACTIVE = true
-local CLONE_MODE = false
 local RUN_ANIMATION_ID = 2510235062
 local animTrack = nil
 local originalPosition = HumanoidRootPart.Position
-local clone = nil
-local humanoidClone = nil
 
 -- Создаем интерфейс
 local ScreenGui = Instance.new("ScreenGui")
@@ -28,7 +25,7 @@ ScreenGui.Name = "BrainrotUI"
 ScreenGui.Parent = player.PlayerGui
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 200, 0, 120)
+MainFrame.Size = UDim2.new(0, 200, 0, 80)
 MainFrame.Position = UDim2.new(0, 10, 0, 10)
 MainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 MainFrame.BorderSizePixel = 0
@@ -51,15 +48,6 @@ ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 ToggleButton.Text = "АКТИВНО"
 ToggleButton.Font = Enum.Font.Gotham
 ToggleButton.Parent = MainFrame
-
-local CloneButton = Instance.new("TextButton")
-CloneButton.Size = UDim2.new(0.9, 0, 0, 30)
-CloneButton.Position = UDim2.new(0.05, 0, 0, 80)
-CloneButton.BackgroundColor3 = Color3.fromRGB(60, 120, 200)
-CloneButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-CloneButton.Text = "Создать клон"
-CloneButton.Font = Enum.Font.Gotham
-CloneButton.Parent = MainFrame
 
 -- Для антихита
 local hitboxDisabled = false
@@ -193,7 +181,7 @@ local function createSpawnMarker(position)
     return marker
 end
 
--- Найти безопасное место для клона на окружности радиусом 30 studs
+-- Найти безопасное место на окружности радиусом 30 studs
 local function findSafeSpawnPosition()
     local center = HumanoidRootPart.Position
     local radius = 30
@@ -222,80 +210,21 @@ local function findSafeSpawnPosition()
     end
 end
 
--- Создание клона
-local function createClone()
-    if clone then clone:Destroy() end
+-- Телепортация на случайную позицию на окружности
+local function teleportToRandomPosition()
+    if not IS_ACTIVE or not HumanoidRootPart or not HumanoidRootPart.Parent then return end
     
     -- Находим позицию на окружности
-    local spawnPosition = findSafeSpawnPosition()
+    local newPosition = findSafeSpawnPosition()
     
     -- Создаем визуальный маркер
-    createSpawnMarker(spawnPosition)
+    createSpawnMarker(newPosition)
     
-    -- Создаем копию персонажа
-    clone = Character:Clone()
+    -- Телепортируем персонажа
+    HumanoidRootPart.CFrame = CFrame.new(newPosition)
+    originalPosition = newPosition
     
-    -- Отключаем все скрипты в клоне
-    for _, descendant in ipairs(clone:GetDescendants()) do
-        if descendant:IsA("Script") or descendant:IsA("LocalScript") then
-            descendant:Destroy()
-        end
-    end
-    
-    -- Настраиваем клон
-    humanoidClone = clone:FindFirstChildOfClass("Humanoid")
-    if humanoidClone then
-        humanoidClone.WalkSpeed = Humanoid.WalkSpeed
-        humanoidClone.JumpPower = Humanoid.JumpPower
-        
-        -- Отключаем смерть у клона
-        humanoidClone.BreakJointsOnDeath = false
-        humanoidClone:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
-    end
-    
-    -- Делаем клон полупрозрачным и без коллизий
-    for _, part in ipairs(clone:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.Transparency = 0.7
-            part.CanCollide = false
-            part.Anchored = false
-        end
-    end
-    
-    -- Устанавливаем позицию клона на окружности
-    clone.Parent = Workspace
-    clone:SetPrimaryPartCFrame(CFrame.new(spawnPosition))
-    
-    -- Подключаем управление клоном
-    if humanoidClone then
-        -- Синхронизируем анимации
-        local cloneAnimTrack = humanoidClone:LoadAnimation(animTrack.Animation)
-        cloneAnimTrack:Play()
-        cloneAnimTrack:AdjustSpeed(animTrack.Speed)
-        
-        -- Синхронизация движений
-        RunService.Heartbeat:Connect(function()
-            if clone and humanoidClone and Humanoid then
-                humanoidClone:Move(Humanoid.MoveDirection, false)
-            end
-        end)
-    end
-    
-    CLONE_MODE = true
-    CloneButton.Text = "Удалить клон"
-    print("Клон создан на расстоянии 30 studs от вас")
-end
-
--- Удаление клона
-local function removeClone()
-    if clone then
-        clone:Destroy()
-        clone = nil
-        humanoidClone = nil
-    end
-    CLONE_MODE = false
-    CloneButton.Text = "Создать клон"
-    print("Клон удален")
+    print("📡 Телепортирован на позицию в радиусе 30 studs")
 end
 
 -- Старт режима
@@ -308,7 +237,7 @@ local function startRunMode()
     enableAntiHit()
     
     -- Клиентские настройки
-    Humanoid.WalkSpeed = 16  -- Оставляем нормальную скорость для управления клоном
+    Humanoid.WalkSpeed = 16
     Humanoid.JumpPower = 50
     playRunAnimation()
     
@@ -327,22 +256,28 @@ local function stopRunMode()
     Humanoid.JumpPower = 50
     if animTrack then animTrack:Stop() end
     
-    -- Удаляем клон если есть
-    if clone then removeClone() end
-    
     print("Run mode deactivated")
 end
 
--- Фиксация позиции (только если не в режиме клона)
+-- Фиксация позиции
 RunService.Heartbeat:Connect(function()
-    if IS_ACTIVE and not CLONE_MODE and HumanoidRootPart and HumanoidRootPart.Parent then
+    if IS_ACTIVE and HumanoidRootPart and HumanoidRootPart.Parent then
         HumanoidRootPart.CFrame = CFrame.new(originalPosition)
         HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
         HumanoidRootPart.RotVelocity = Vector3.new(0, 0, 0)
     end
 end)
 
--- Обработчики кнопок интерфейса
+-- Обработчик клика для телепортации
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    if IS_ACTIVE and input.UserInputType == Enum.UserInputType.MouseButton1 then
+        teleportToRandomPosition()
+    end
+end)
+
+-- Обработчик кнопки интерфейса
 ToggleButton.MouseButton1Click:Connect(function()
     IS_ACTIVE = not IS_ACTIVE
     
@@ -357,19 +292,6 @@ ToggleButton.MouseButton1Click:Connect(function()
         ToggleButton.BackgroundColor3 = Color3.fromRGB(180, 60, 60)
         ToggleButton.Text = "НЕАКТИВНО"
         stopRunMode()
-    end
-end)
-
-CloneButton.MouseButton1Click:Connect(function()
-    if not IS_ACTIVE then
-        print("Сначала активируйте антихит!")
-        return
-    end
-    
-    if CLONE_MODE then
-        removeClone()
-    else
-        createClone()
     end
 end)
 
@@ -409,3 +331,8 @@ player.CharacterAdded:Connect(function(newCharacter)
     -- Обновляем интерфейс
     if ScreenGui then ScreenGui.Parent = player.PlayerGui end
 end)
+
+print("🎯 Brainrot Ultimate Anti-Hit загружен!")
+print("🛡️ CanCollide=false, CanTouch=false, CanQuery=false")
+print("🚫 Неуязвим к лучам, хитбоксам и коллизиям")
+print("📍 ЛКМ - телепортация на окружность радиусом 30 studs")
