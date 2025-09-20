@@ -1,1 +1,102 @@
+local Player = game:GetService("Players").LocalPlayer
+local UIS = game:GetService("UserInputService")
+local CoreGui = game:GetService("CoreGui")
+local Workspace = game:GetService("Workspace")
 
+-- Настройки
+local GRAVITY_VALUE = 1
+local scriptActive = true
+local gravityEnabled = false
+
+-- Сохраняем оригинальную гравитацию
+local originalGravity = Workspace.Gravity
+
+-- Создаем интерфейс
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "GravityControl"
+screenGui.Parent = CoreGui
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 150, 0, 80)
+frame.Position = UDim2.new(0.8, 0, 0.2, 0)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+frame.BackgroundTransparency = 0.3
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Draggable = true
+
+local uiCorner = Instance.new("UICorner")
+uiCorner.CornerRadius = UDim.new(0, 8)
+uiCorner.Parent = frame
+
+-- Заголовок
+local titleText = Instance.new("TextLabel")
+titleText.Size = UDim2.new(1, 0, 0, 20)
+titleText.Position = UDim2.new(0, 0, 0, 5)
+titleText.BackgroundTransparency = 1
+titleText.Text = "GRAVITY"
+titleText.TextColor3 = Color3.fromRGB(200, 200, 200)
+titleText.Font = Enum.Font.GothamBold
+titleText.TextSize = 16
+titleText.TextXAlignment = Enum.TextXAlignment.Center
+
+-- Переключатель гравитации
+local gravityToggle = Instance.new("TextButton")
+gravityToggle.Size = UDim2.new(0, 50, 0, 25)
+gravityToggle.Position = UDim2.new(0.05, 0, 0.4, 0)
+gravityToggle.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+gravityToggle.Text = "OFF"
+gravityToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+gravityToggle.Font = Enum.Font.GothamBold
+gravityToggle.TextSize = 14
+
+-- Текст значения гравитации
+local gravityValueText = Instance.new("TextLabel")
+gravityValueText.Size = UDim2.new(1, 0, 0, 20)
+gravityValueText.Position = UDim2.new(0, 0, 0.75, 0)
+gravityValueText.BackgroundTransparency = 1
+gravityValueText.Text = "G: " .. tostring(Workspace.Gravity)
+gravityValueText.TextColor3 = Color3.fromRGB(200, 200, 200)
+gravityValueText.Font = Enum.Font.Gotham
+gravityValueText.TextSize = 12
+gravityValueText.TextXAlignment = Enum.TextXAlignment.Center
+
+-- Иерархия объектов
+titleText.Parent = frame
+gravityToggle.Parent = frame
+gravityValueText.Parent = frame
+uiCorner.Parent = frame
+frame.Parent = screenGui
+
+-- Функция включения/выключения гравитации
+local function toggleGravity()
+    gravityEnabled = not gravityEnabled
+    
+    if gravityEnabled then
+        Workspace.Gravity = GRAVITY_VALUE
+        gravityToggle.Text = "ON"
+        gravityToggle.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+    else
+        Workspace.Gravity = originalGravity
+        gravityToggle.Text = "OFF"
+        gravityToggle.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+    end
+    
+    gravityValueText.Text = "G: " .. tostring(Workspace.Gravity)
+end
+
+-- Обработчик клика по переключателю
+gravityToggle.MouseButton1Click:Connect(toggleGravity)
+
+-- Обработчик F2 для выключения скрипта
+UIS.InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.F2 then
+        scriptActive = false
+        -- Восстанавливаем оригинальную гравитацию перед выходом
+        Workspace.Gravity = originalGravity
+        screenGui:Destroy()
+        print("Скрипт выключен, гравитация восстановлена")
+    end
+end)
+
+print("Гравитация контроллер загружен. Нажмите F2 для выключения.")
