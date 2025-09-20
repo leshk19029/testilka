@@ -6,6 +6,9 @@ local SpeedBoostModule = loadstring(game:HttpGet('https://raw.githubusercontent.
 -- Загружаем модуль ESP
 local ESPModule = loadstring(game:HttpGet('https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/esp'))()
 
+-- Загружаем модуль Anti Effects
+local AntiEffectsModule = loadstring(game:HttpGet('https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/antieffects'))()
+
 local Window = Library:CreateMain({
     projName = "Solaris Lib",
     Resizable = true,
@@ -19,6 +22,7 @@ local MainSection = MainTab:CreateSection("Functions")
 -- Anti Effects Toggle
 local AntiEffectsToggle = MainSection:Create("Toggle", "Anti Effects", function(state)
     if state then
+        AntiEffectsModule()
         print("Anti Effects enabled")
     else
         print("Anti Effects disabled")
