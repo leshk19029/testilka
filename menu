@@ -1,10 +1,10 @@
 local Library = loadstring(game:HttpGet('https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/library'))()
 
 -- Загружаем модуль спид-буста
-local SpeedBoostModule = loadstring(game:HttpGet('https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/2'))()
+local SpeedBoostModule = loadstring(game:HttpGet('https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/speed'))()
 
 local Window = Library:CreateMain({
-    projName = "Pury Hub",
+    projName = "Solaris Lib",
     Resizable = true,
     MinSize = UDim2.new(0, 700, 0, 460),
     MaxSize = UDim2.new(0, 1000, 0, 600)
@@ -36,6 +36,12 @@ end, {
 local SpeedSlider = MainSection:Create("Slider", "Speed Value", function(value)
     SpeedBoostModule:SetSpeed(value)
     print("Speed set to:", value)
+    
+    -- Если спид-буст включен, обновляем скорость в реальном времени
+    if SpeedBoostModule.Enabled then
+        SpeedBoostModule:Disable()
+        SpeedBoostModule:Enable()
+    end
 end, {
     min = 1,
     max = 45,
