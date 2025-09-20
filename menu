@@ -1,5 +1,8 @@
 local Library = loadstring(game:HttpGet('https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/library'))()
 
+-- Загружаем модуль спид-буста
+local SpeedBoostModule = loadstring(game:HttpGet('https://raw.githubusercontent.com/ваш-username/ваш-репозиторий/main/speedboost_module.lua'))()
+
 local Window = Library:CreateMain({
     projName = "Solaris Lib",
     Resizable = true,
@@ -8,17 +11,14 @@ local Window = Library:CreateMain({
 })
 
 local MainTab = Window:CreateCategory("Main")
-
 local MainSection = MainTab:CreateSection("Functions")
 
 -- Anti Effects Toggle
 local AntiEffectsToggle = MainSection:Create("Toggle", "Anti Effects", function(state)
     if state then
         print("Anti Effects enabled")
-        -- Здесь код для Anti Effects
     else
         print("Anti Effects disabled")
-        -- Здесь код для отключения Anti Effects
     end
 end, {
     default = false
@@ -26,23 +26,18 @@ end, {
 
 -- Speed Boost Toggle
 local SpeedBoostToggle = MainSection:Create("Toggle", "Speed Boost", function(state)
-    if state then
-        print("Speed Boost enabled")
-        -- Здесь код для Speed Boost
-    else
-        print("Speed Boost disabled")
-        -- Здесь код для отключения Speed Boost
-    end
+    SpeedBoostModule:SetEnabled(state)
+    print("Speed Boost " .. (state and "enabled" or "disabled"))
 end, {
     default = false
 })
 
 -- Speed Value Slider
 local SpeedSlider = MainSection:Create("Slider", "Speed Value", function(value)
+    SpeedBoostModule:SetSpeed(value)
     print("Speed set to:", value)
-    -- Здесь код для установки скорости
 end, {
-    min = 0,
+    min = 1,
     max = 45,
     default = 16,
     precise = true
