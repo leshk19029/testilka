@@ -5,7 +5,7 @@ local CoreGui = game:GetService("CoreGui")
 
 -- Настройки
 local FLY_SPEED = 30
-local FALL_SPEED = 5
+local FALL_SPEED = -2
 local MAX_HEIGHT_GAIN = 21.8
 local isFlying = false
 local heightLimitEnabled = false
