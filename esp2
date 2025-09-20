@@ -1,8 +1,8 @@
 
-
 local Players = game:GetService("Players")
-local PhysicsService = game:GetService("PhysicsService")
+local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
+local PhysicsService = game:GetService("PhysicsService")
 local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 local Backpack = LocalPlayer:WaitForChild("Backpack")
@@ -14,15 +14,16 @@ local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart", 10)
 
 -- Настройки
 local IS_ACTIVE = true
-local RUN_ANIMATION_ID = 2510235062
-local animTrack = nil
 local originalPosition = HumanoidRootPart.Position
 
 -- Для антихита
 local hitboxDisabled = false
 local originalProperties = {}
 
--- Создание UI: меню с переключателем
+-- Авто заморозка
+local autoFreezeActive = false
+
+-- UI: меню с кнопками
 local function createUI()
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "BrainrotUI"
@@ -32,7 +33,7 @@ local function createUI()
     local frame = Instance.new("Frame")
     frame.Name = "BrainrotFrame"
     frame.Parent = screenGui
-    frame.Size = UDim2.new(0, 230, 0, 120)
+    frame.Size = UDim2.new(0, 230, 0, 140)
     frame.Position = UDim2.new(0, 10, 0, 10)
     frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
     frame.BackgroundTransparency = 0.15
@@ -75,6 +76,18 @@ local function createUI()
     toggleBtn.TextScaled = true
     toggleBtn.BorderSizePixel = 0
 
+    local autoBtn = Instance.new("TextButton")
+    autoBtn.Name = "AutoFreezeButton"
+    autoBtn.Parent = frame
+    autoBtn.Size = UDim2.new(0, 150, 0, 40)
+    autoBtn.Position = UDim2.new(0.5, -75, 0, 100)
+    autoBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 200)
+    autoBtn.TextColor3 = Color3.new(1, 1, 1)
+    autoBtn.Text = "Auto Freeze: Off"
+    autoBtn.Font = Enum.Font.SourceSansBold
+    autoBtn.TextScaled = true
+    autoBtn.BorderSizePixel = 0
+
     local closeBtn = Instance.new("TextButton")
     closeBtn.Name = "CloseButton"
     closeBtn.Parent = frame
@@ -102,8 +115,25 @@ local function createUI()
         end
     end
 
+    local function setAuto(state)
+        autoFreezeActive = state
+        if autoFreezeActive then
+            autoBtn.Text = "Auto Freeze: On"
+        else
+            autoBtn.Text = "Auto Freeze: Off"
+        end
+    end
+
     toggleBtn.MouseButton1Click:Connect(function()
         setActive(not IS_ACTIVE)
+    end)
+
+    autoBtn.MouseButton1Click:Connect(function()
+        setAuto(not autoFreezeActive)
+        -- При включении автозаморозки мгновенно определяем точку
+        if autoFreezeActive then
+            originalPosition = findFreezePosition()
+        end
     end)
 
     closeBtn.MouseButton1Click:Connect(function()
@@ -114,11 +144,12 @@ local function createUI()
         UI = screenGui,
         Frame = frame,
         ToggleButton = toggleBtn,
+        AutoFreezeButton = autoBtn,
         StatusLabel = statusLabel
     }
 end
 
--- Сохранение оригинальных свойств частeй
+-- Фиксация оригинальных свойств
 local function saveOriginalProperties()
     originalProperties = {}
     for _, part in ipairs(Character:GetDescendants()) do
@@ -196,24 +227,35 @@ local function disableAntiHit()
     end)
 end
 
--- Функция для запуска анимации
-local function playRunAnimation()
-    if animTrack and animTrack.IsPlaying then animTrack:Stop() end
-    local success, err = pcall(function()
-        local animation = Instance.new("Animation")
-        animation.AnimationId = "rbxassetid://" .. RUN_ANIMATION_ID
-        animTrack = Humanoid:LoadAnimation(animation)
-        animTrack:Play(0.1)
-        animTrack.Looped = true
-    end)
-    if success then
-        print("Run animation started")
-    else
-        warn("Animation error: " .. (err or "Unknown"))
+-- Удаляем анимацию: здесь просто не используем анимации
+-- (предыдущий скрипт вызывал run-anim; мы её не запускали)
+
+-- Функция для безопасной точки заморозки в окрестности 30 studs
+local function findFreezePosition()
+    local origin = HumanoidRootPart.Position
+    local originY = origin.Y
+    local params = RaycastParams.new()
+    params.FilterType = Enum.RaycastFilterType.Blacklist
+    if Character then
+        params.FilterDescendantsInstances = {Character}
     end
+
+    for _ = 1, 20 do
+        local angle = math.rad(math.random(0, 360))
+        local radius = math.random() * 30
+        local x = origin.X + math.cos(angle) * radius
+        local z = origin.Z + math.sin(angle) * radius
+        local start = Vector3.new(x, originY + 20, z)
+        local dir = Vector3.new(0, -50, 0)
+        local hit = Workspace:Raycast(start, dir, params)
+        if hit and hit.Position then
+            return hit.Position
+        end
+    end
+    return origin
 end
 
--- Старт режима
+-- Функция для запуска режима (без анимации)
 local function startRunMode()
     if not Humanoid or not HumanoidRootPart or not Character.Parent then return end
 
@@ -221,10 +263,9 @@ local function startRunMode()
 
     enableAntiHit()
 
-    -- Клиентские настройки
+    -- Клиентские параметры
     Humanoid.WalkSpeed = 0
     Humanoid.JumpPower = 0
-    playRunAnimation()
 
     print("Run mode activated: Ultimate anti-hit enabled")
 end
@@ -238,7 +279,6 @@ local function stopRunMode()
     -- Восстановление параметров
     Humanoid.WalkSpeed = 16
     Humanoid.JumpPower = 50
-    if animTrack then animTrack:Stop() end
 
     print("Run mode deactivated")
 end
@@ -246,6 +286,12 @@ end
 -- Фиксация позиции
 RunService.Heartbeat:Connect(function()
     if IS_ACTIVE and HumanoidRootPart and HumanoidRootPart.Parent then
+        -- Если авто-заморозка включена, вычисляем новую точку и фиксируемся там
+        if autoFreezeActive then
+            local newPos = findFreezePosition()
+            if newPos then originalPosition = newPos end
+        end
+
         HumanoidRootPart.CFrame = CFrame.new(originalPosition)
         HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
         HumanoidRootPart.RotVelocity = Vector3.new(0, 0, 0)
@@ -255,7 +301,7 @@ end)
 -- Инициализация UI
 local ui = createUI()
 
--- Инициализация состояния
+-- Инициализация состояния: запуск при включенном состоянии
 task.delay(0.2, function()
     if IS_ACTIVE then
         startRunMode()
@@ -270,6 +316,7 @@ local function onCharacterAdded(newCharacter)
     HumanoidRootPart = Character:WaitForChild("HumanoidRootPart", 10)
 
     hitboxDisabled = false
+
     if IS_ACTIVE then
         task.delay(0.5, function()
             startRunMode()
@@ -278,8 +325,3 @@ local function onCharacterAdded(newCharacter)
 end
 
 LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
-
-print("🎯 Brainrot Ultimate Anti-Hit загружен!")
-print("🛡️ CanCollide=false, CanTouch=false, CanQuery=false")
-print("🚫 Неуязвим к лучам, хитбоксам и коллизиям")
-print("💡 Меню доступно: BrainrotUI в PlayerGui")
