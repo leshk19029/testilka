@@ -14,7 +14,7 @@ local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 
 -- Настройки
-local IS_ACTIVE = true
+local IS_ACTIVE = false
 local RUN_ANIMATION_ID = 2510235062
 local animTrack = nil
 local originalPosition = HumanoidRootPart.Position
@@ -43,9 +43,9 @@ Title.Parent = MainFrame
 local ToggleButton = Instance.new("TextButton")
 ToggleButton.Size = UDim2.new(0.9, 0, 0, 30)
 ToggleButton.Position = UDim2.new(0.05, 0, 0, 40)
-ToggleButton.BackgroundColor3 = Color3.fromRGB(60, 180, 80)
+ToggleButton.BackgroundColor3 = Color3.fromRGB(180, 60, 60)
 ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-ToggleButton.Text = "АКТИВНО"
+ToggleButton.Text = "НЕАКТИВНО"
 ToggleButton.Font = Enum.Font.Gotham
 ToggleButton.Parent = MainFrame
 
@@ -63,7 +63,7 @@ local function saveOriginalProperties()
                 CanTouch = part.CanTouch,
                 CanQuery = part.CanQuery,
                 Transparency = part.Transparency,
-                CollisionGroup = part.CollisionGroupId
+                CollisionGroupId = part.CollisionGroupId
             }
         end
     end
@@ -128,7 +128,7 @@ local function disableAntiHit()
                 part.CanTouch = properties.CanTouch
                 part.CanQuery = properties.CanQuery
                 part.Transparency = properties.Transparency
-                part.CollisionGroupId = properties.CollisionGroup
+                part.CollisionGroupId = properties.CollisionGroupId
             end
         end
         
@@ -212,7 +212,13 @@ end
 
 -- Телепортация на случайную позицию на окружности
 local function teleportToRandomPosition()
-    if not IS_ACTIVE or not HumanoidRootPart or not HumanoidRootPart.Parent then return end
+    if not IS_ACTIVE or not HumanoidRootPart or not HumanoidRootPart.Parent then 
+        print("❌ Антихит не активирован или персонаж не найден")
+        return 
+    end
+    
+    -- Временно отключаем антихит для телепортации
+    disableAntiHit()
     
     -- Находим позицию на окружности
     local newPosition = findSafeSpawnPosition()
@@ -224,12 +230,18 @@ local function teleportToRandomPosition()
     HumanoidRootPart.CFrame = CFrame.new(newPosition)
     originalPosition = newPosition
     
+    -- Снова включаем антихит
+    enableAntiHit()
+    
     print("📡 Телепортирован на позицию в радиусе 30 studs")
 end
 
 -- Старт режима
 local function startRunMode()
-    if not Humanoid or not HumanoidRootPart or not Character.Parent then return end
+    if not Humanoid or not HumanoidRootPart or not Character.Parent then 
+        print("❌ Персонаж не готов")
+        return 
+    end
     
     originalPosition = HumanoidRootPart.Position
     
@@ -241,7 +253,7 @@ local function startRunMode()
     Humanoid.JumpPower = 50
     playRunAnimation()
     
-    print("Run mode activated: Ultimate anti-hit enabled")
+    print("✅ Run mode activated: Ultimate anti-hit enabled")
 end
 
 -- Стоп режима
@@ -256,7 +268,7 @@ local function stopRunMode()
     Humanoid.JumpPower = 50
     if animTrack then animTrack:Stop() end
     
-    print("Run mode deactivated")
+    print("❌ Run mode deactivated")
 end
 
 -- Фиксация позиции
@@ -284,10 +296,7 @@ ToggleButton.MouseButton1Click:Connect(function()
     if IS_ACTIVE then
         ToggleButton.BackgroundColor3 = Color3.fromRGB(60, 180, 80)
         ToggleButton.Text = "АКТИВНО"
-        local tool = Backpack:FindFirstChildOfClass("Tool")
-        if tool and tool.Name:lower():find("brainrot") then
-            startRunMode()
-        end
+        startRunMode()
     else
         ToggleButton.BackgroundColor3 = Color3.fromRGB(180, 60, 60)
         ToggleButton.Text = "НЕАКТИВНО"
@@ -295,19 +304,29 @@ ToggleButton.MouseButton1Click:Connect(function()
     end
 end)
 
--- Мониторинг Backpack
+-- Мониторинг Backpack (опционально)
 Backpack.ChildAdded:Connect(function(tool)
-    if not IS_ACTIVE or not tool or not tool:IsA("Tool") then return end
+    if not tool or not tool:IsA("Tool") then return end
     if tool.Name:lower():find("brainrot") then
-        task.wait(0.5)
-        startRunMode()
+        if not IS_ACTIVE then
+            IS_ACTIVE = true
+            ToggleButton.BackgroundColor3 = Color3.fromRGB(60, 180, 80)
+            ToggleButton.Text = "АКТИВНО"
+            task.wait(0.5)
+            startRunMode()
+        end
     end
 end)
 
 Backpack.ChildRemoved:Connect(function(tool)
     if not tool or not tool:IsA("Tool") then return end
     if tool.Name:lower():find("brainrot") then
-        stopRunMode()
+        if IS_ACTIVE then
+            IS_ACTIVE = false
+            ToggleButton.BackgroundColor3 = Color3.fromRGB(180, 60, 60)
+            ToggleButton.Text = "НЕАКТИВНО"
+            stopRunMode()
+        end
     end
 end)
 
@@ -321,11 +340,8 @@ player.CharacterAdded:Connect(function(newCharacter)
     hitboxDisabled = false
     
     if IS_ACTIVE then
-        local tool = Backpack:FindFirstChildOfClass("Tool")
-        if tool and tool.Name:lower():find("brainrot") then
-            task.wait(2)
-            startRunMode()
-        end
+        task.wait(2)
+        startRunMode()
     end
     
     -- Обновляем интерфейс
@@ -336,3 +352,4 @@ print("🎯 Brainrot Ultimate Anti-Hit загружен!")
 print("🛡️ CanCollide=false, CanTouch=false, CanQuery=false")
 print("🚫 Неуязвим к лучам, хитбоксам и коллизиям")
 print("📍 ЛКМ - телепортация на окружность радиусом 30 studs")
+print("💡 Нажмите кнопку в интерфейсе для активации")
