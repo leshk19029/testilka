@@ -16,13 +16,6 @@ local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart", 10)
 local IS_ACTIVE = true
 local originalPosition = HumanoidRootPart.Position
 
--- Для антихита
-local hitboxDisabled = false
-local originalProperties = {}
-
--- Авто заморозка
-local autoFreezeActive = false
-
 -- UI: меню с кнопками
 local function createUI()
     local screenGui = Instance.new("ScreenGui")
@@ -33,7 +26,7 @@ local function createUI()
     local frame = Instance.new("Frame")
     frame.Name = "BrainrotFrame"
     frame.Parent = screenGui
-    frame.Size = UDim2.new(0, 230, 0, 140)
+    frame.Size = UDim2.new(0, 230, 0, 120)
     frame.Position = UDim2.new(0, 10, 0, 10)
     frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
     frame.BackgroundTransparency = 0.15
@@ -76,18 +69,6 @@ local function createUI()
     toggleBtn.TextScaled = true
     toggleBtn.BorderSizePixel = 0
 
-    local autoBtn = Instance.new("TextButton")
-    autoBtn.Name = "AutoFreezeButton"
-    autoBtn.Parent = frame
-    autoBtn.Size = UDim2.new(0, 150, 0, 40)
-    autoBtn.Position = UDim2.new(0.5, -75, 0, 100)
-    autoBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 200)
-    autoBtn.TextColor3 = Color3.new(1, 1, 1)
-    autoBtn.Text = "Auto Freeze: Off"
-    autoBtn.Font = Enum.Font.SourceSansBold
-    autoBtn.TextScaled = true
-    autoBtn.BorderSizePixel = 0
-
     local closeBtn = Instance.new("TextButton")
     closeBtn.Name = "CloseButton"
     closeBtn.Parent = frame
@@ -115,25 +96,8 @@ local function createUI()
         end
     end
 
-    local function setAuto(state)
-        autoFreezeActive = state
-        if autoFreezeActive then
-            autoBtn.Text = "Auto Freeze: On"
-        else
-            autoBtn.Text = "Auto Freeze: Off"
-        end
-    end
-
     toggleBtn.MouseButton1Click:Connect(function()
         setActive(not IS_ACTIVE)
-    end)
-
-    autoBtn.MouseButton1Click:Connect(function()
-        setAuto(not autoFreezeActive)
-        -- При включении автозаморозки мгновенно определяем точку
-        if autoFreezeActive then
-            originalPosition = findFreezePosition()
-        end
     end)
 
     closeBtn.MouseButton1Click:Connect(function()
@@ -144,139 +108,29 @@ local function createUI()
         UI = screenGui,
         Frame = frame,
         ToggleButton = toggleBtn,
-        AutoFreezeButton = autoBtn,
         StatusLabel = statusLabel
     }
 end
 
--- Фиксация оригинальных свойств
-local function saveOriginalProperties()
-    originalProperties = {}
-    for _, part in ipairs(Character:GetDescendants()) do
-        if part:IsA("BasePart") then
-            originalProperties[part] = {
-                CanCollide = part.CanCollide,
-                CanTouch = part.CanTouch,
-                CanQuery = part.CanQuery,
-                Transparency = part.Transparency,
-                CollisionGroupId = part.CollisionGroupId
-            }
-        end
-    end
-end
-
--- Создаем/обновляем уникальную коллизионную группу
-local function ensureCollisionGroup(name)
-    if not PhysicsService:IsCollisionGroupRegistered(name) then
-        PhysicsService:RegisterCollisionGroup(name)
-        PhysicsService:CollisionGroupSetCollidable(name, "Default", false)
-    end
-    return PhysicsService:GetCollisionGroupId(name)
-end
-
--- Делаем персонажа неуязвимым
-local function enableAntiHit()
-    if hitboxDisabled then return end
-
-    pcall(function()
-        saveOriginalProperties()
-
-        local newCollisionGroup = "AntiHitGroup_" .. tostring(math.random(10000, 99999))
-        local groupId = ensureCollisionGroup(newCollisionGroup)
-
-        for _, part in ipairs(Character:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.CanCollide = false
-                part.CanTouch = false
-                part.CanQuery = false
-                part.Transparency = 0.5
-                part.CollisionGroupId = groupId
-
-                -- Отключаем все силы
-                part.Velocity = Vector3.new(0, 0, 0)
-                part.RotVelocity = Vector3.new(0, 0, 0)
-            end
-        end
-
-        HumanoidRootPart.Anchored = true
-
-        hitboxDisabled = true
-        print("🛡️ Антихит активирован: коллизии отключены")
-    end)
-end
-
--- Возвращаем оригинальные свойства
-local function disableAntiHit()
-    if not hitboxDisabled then return end
-
-    pcall(function()
-        for part, properties in pairs(originalProperties) do
-            if part and part.Parent then
-                part.CanCollide = properties.CanCollide
-                part.CanTouch = properties.CanTouch
-                part.CanQuery = properties.CanQuery
-                part.Transparency = properties.Transparency
-                part.CollisionGroupId = properties.CollisionGroupId
-            end
-        end
-
-        HumanoidRootPart.Anchored = false
-
-        hitboxDisabled = false
-        print("🛡️ Антихит деактивирован")
-    end)
-end
-
--- Удаляем анимацию: здесь просто не используем анимации
--- (предыдущий скрипт вызывал run-anim; мы её не запускали)
-
--- Функция для безопасной точки заморозки в окрестности 30 studs
-local function findFreezePosition()
-    local origin = HumanoidRootPart.Position
-    local originY = origin.Y
-    local params = RaycastParams.new()
-    params.FilterType = Enum.RaycastFilterType.Blacklist
-    if Character then
-        params.FilterDescendantsInstances = {Character}
-    end
-
-    for _ = 1, 20 do
-        local angle = math.rad(math.random(0, 360))
-        local radius = math.random() * 30
-        local x = origin.X + math.cos(angle) * radius
-        local z = origin.Z + math.sin(angle) * radius
-        local start = Vector3.new(x, originY + 20, z)
-        local dir = Vector3.new(0, -50, 0)
-        local hit = Workspace:Raycast(start, dir, params)
-        if hit and hit.Position then
-            return hit.Position
-        end
-    end
-    return origin
-end
-
--- Функция для запуска режима (без анимации)
+-- Удаляем анти-хит и авто-заморозку: ручной режим заморозки
 local function startRunMode()
     if not Humanoid or not HumanoidRootPart or not Character.Parent then return end
 
     originalPosition = HumanoidRootPart.Position
 
-    enableAntiHit()
-
-    -- Клиентские параметры
+    -- Заблокировать движение: заморозка персонажа
+    HumanoidRootPart.Anchored = true
     Humanoid.WalkSpeed = 0
     Humanoid.JumpPower = 0
 
-    print("Run mode activated: Ultimate anti-hit enabled")
+    print("Run mode activated: заморозка и отключение движений включены")
 end
 
--- Стоп режима
 local function stopRunMode()
     if not Humanoid or not HumanoidRootPart or not Character.Parent then return end
 
-    disableAntiHit()
-
-    -- Восстановление параметров
+    -- Разморозка
+    HumanoidRootPart.Anchored = false
     Humanoid.WalkSpeed = 16
     Humanoid.JumpPower = 50
 
@@ -286,12 +140,6 @@ end
 -- Фиксация позиции
 RunService.Heartbeat:Connect(function()
     if IS_ACTIVE and HumanoidRootPart and HumanoidRootPart.Parent then
-        -- Если авто-заморозка включена, вычисляем новую точку и фиксируемся там
-        if autoFreezeActive then
-            local newPos = findFreezePosition()
-            if newPos then originalPosition = newPos end
-        end
-
         HumanoidRootPart.CFrame = CFrame.new(originalPosition)
         HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
         HumanoidRootPart.RotVelocity = Vector3.new(0, 0, 0)
@@ -314,8 +162,6 @@ local function onCharacterAdded(newCharacter)
     task.wait(1)
     Humanoid = Character:WaitForChild("Humanoid", 10)
     HumanoidRootPart = Character:WaitForChild("HumanoidRootPart", 10)
-
-    hitboxDisabled = false
 
     if IS_ACTIVE then
         task.delay(0.5, function()
