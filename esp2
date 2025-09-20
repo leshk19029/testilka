@@ -176,37 +176,61 @@ local function playRunAnimation()
     end
 end
 
--- Найти безопасное место для клона
+-- Функция для создания временного визуального маркера
+local function createSpawnMarker(position)
+    local marker = Instance.new("Part")
+    marker.Size = Vector3.new(2, 2, 2)
+    marker.Position = position
+    marker.Anchored = true
+    marker.CanCollide = false
+    marker.Material = EnumMaterial.Neon
+    marker.Color = Color3.fromRGB(0, 255, 0)
+    marker.Transparency = 0.3
+    marker.Parent = Workspace
+    
+    -- Удаляем маркер через 3 секунды
+    game:GetService("Debris"):AddItem(marker, 3)
+    return marker
+end
+
+-- Найти безопасное место для клона на окружности радиусом 30 studs
 local function findSafeSpawnPosition()
     local center = HumanoidRootPart.Position
     local radius = 30
     
-    -- Пробуем несколько случайных позиций
-    for i = 1, 10 do
-        local randomAngle = math.random() * math.pi * 2
-        local randomDistance = math.random() * radius
-        local x = center.X + math.cos(randomAngle) * randomDistance
-        local z = center.Z + math.sin(randomAngle) * randomDistance
-        
-        -- Проверяем, не находится ли позиция внутри стены
-        local params = RaycastParams.new()
-        params.FilterType = Enum.RaycastFilterType.Blacklist
-        params.FilterDescendantsInstances = {Character}
-        
-        local raycastResult = workspace:Raycast(Vector3.new(x, center.Y + 10, z), Vector3.new(0, -20, 0), params)
-        
-        if raycastResult and raycastResult.Instance then
-            return raycastResult.Position + Vector3.new(0, 3, 0) -- Поднимаем немного над землей
-        end
-    end
+    -- Генерируем случайный угол от 0 до 360 градусов
+    local randomAngle = math.random() * math.pi * 2
     
-    -- Если не нашли безопасное место, возвращаем позицию рядом с игроком
-    return center + Vector3.new(math.random(-5, 5), 3, math.random(-5, 5))
+    -- Вычисляем позицию на окружности
+    local x = center.X + math.cos(randomAngle) * radius
+    local z = center.Z + math.sin(randomAngle) * radius
+    
+    -- Проверяем, не находится ли позиция внутри стены/объекта
+    local params = RaycastParams.new()
+    params.FilterType = Enum.RaycastFilterType.Blacklist
+    params.FilterDescendantsInstances = {Character}
+    
+    -- Бросаем луч сверху вниз для определения высоты земли
+    local raycastResult = workspace:Raycast(Vector3.new(x, center.Y + 50, z), Vector3.new(0, -100, 0), params)
+    
+    if raycastResult and raycastResult.Instance then
+        -- Нашли землю - возвращаем позицию немного выше поверхности
+        return raycastResult.Position + Vector3.new(0, 3, 0)
+    else
+        -- Если не нашли землю, используем высоту игрока
+        return Vector3.new(x, center.Y, z)
+    end
 end
 
 -- Создание клона
 local function createClone()
     if clone then clone:Destroy() end
+    
+    -- Находим позицию на окружности
+    local spawnPosition = findSafeSpawnPosition()
+    
+    -- Создаем визуальный маркер
+    createSpawnMarker(spawnPosition)
     
     -- Создаем копию персонажа
     clone = Character:Clone()
@@ -217,9 +241,6 @@ local function createClone()
             descendant:Destroy()
         end
     end
-    
-    -- Находим безопасное место для спавна
-    local spawnPosition = findSafeSpawnPosition()
     
     -- Настраиваем клон
     humanoidClone = clone:FindFirstChildOfClass("Humanoid")
@@ -241,7 +262,7 @@ local function createClone()
         end
     end
     
-    -- Устанавливаем позицию клона
+    -- Устанавливаем позицию клона на окружности
     clone.Parent = Workspace
     clone:SetPrimaryPartCFrame(CFrame.new(spawnPosition))
     
@@ -262,7 +283,7 @@ local function createClone()
     
     CLONE_MODE = true
     CloneButton.Text = "Удалить клон"
-    print("Клон создан, можно свободно перемещаться")
+    print("Клон создан на расстоянии 30 studs от вас")
 end
 
 -- Удаление клона
@@ -388,8 +409,3 @@ player.CharacterAdded:Connect(function(newCharacter)
     -- Обновляем интерфейс
     if ScreenGui then ScreenGui.Parent = player.PlayerGui end
 end)
-
-print("🎯 Brainrot Ultimate Anti-Hit загружен!")
-print("🛡️ CanCollide=false, CanTouch=false, CanQuery=false")
-print("🚫 Неуязвим к лучам, хитбоксам и коллизиям")
-print("👤 Интерфейс создан - можно создавать клон для перемещения")
