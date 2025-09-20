@@ -20,6 +20,7 @@ local RUN_ANIMATION_ID = 2510235062
 local animTrack = nil
 local originalPosition = HumanoidRootPart.Position
 local clone = nil
+local humanoidClone = nil
 
 -- Создаем интерфейс
 local ScreenGui = Instance.new("ScreenGui")
@@ -94,6 +95,7 @@ local function enableAntiHit()
         if not game:GetService("PhysicsService"):IsCollisionGroupRegistered(newCollisionGroup) then
             game:GetService("PhysicsService"):RegisterCollisionGroup(newCollisionGroup)
             game:GetService("PhysicsService"):CollisionGroupSetCollidable(newCollisionGroup, "Default", false)
+            game:GetService("PhysicsService"):CollisionGroupSetCollidable(newCollisionGroup, newCollisionGroup, false)
         end
         
         -- Применяем ко всем частям
@@ -103,12 +105,20 @@ local function enableAntiHit()
                 part.CanTouch = false
                 part.CanQuery = false
                 part.Transparency = 0.5 -- Полупрозрачный для визуала
-                part.CollisionGroupId = game:GetService("PhysicsService"):GetCollisionGroupId(newCollisionGroup)
+                part.CollisionGroup = newCollisionGroup
                 
                 -- Отключаем все силы
                 part.Velocity = Vector3.new(0, 0, 0)
                 part.RotVelocity = Vector3.new(0, 0, 0)
             end
+        end
+        
+        -- Защита от смерти - отключаем человечка
+        if Humanoid then
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+            Humanoid.BreakJointsOnDeath = false
         end
         
         -- Якорь чтобы не падать
@@ -132,6 +142,14 @@ local function disableAntiHit()
                 part.Transparency = properties.Transparency
                 part.CollisionGroupId = properties.CollisionGroup
             end
+        end
+        
+        -- Восстанавливаем состояния человечка
+        if Humanoid then
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, true)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, true)
+            Humanoid.BreakJointsOnDeath = true
         end
         
         HumanoidRootPart.Anchored = false
@@ -158,13 +176,40 @@ local function playRunAnimation()
     end
 end
 
+-- Найти безопасное место для клона
+local function findSafeSpawnPosition()
+    local center = HumanoidRootPart.Position
+    local radius = 30
+    
+    -- Пробуем несколько случайных позиций
+    for i = 1, 10 do
+        local randomAngle = math.random() * math.pi * 2
+        local randomDistance = math.random() * radius
+        local x = center.X + math.cos(randomAngle) * randomDistance
+        local z = center.Z + math.sin(randomAngle) * randomDistance
+        
+        -- Проверяем, не находится ли позиция внутри стены
+        local params = RaycastParams.new()
+        params.FilterType = Enum.RaycastFilterType.Blacklist
+        params.FilterDescendantsInstances = {Character}
+        
+        local raycastResult = workspace:Raycast(Vector3.new(x, center.Y + 10, z), Vector3.new(0, -20, 0), params)
+        
+        if raycastResult and raycastResult.Instance then
+            return raycastResult.Position + Vector3.new(0, 3, 0) -- Поднимаем немного над землей
+        end
+    end
+    
+    -- Если не нашли безопасное место, возвращаем позицию рядом с игроком
+    return center + Vector3.new(math.random(-5, 5), 3, math.random(-5, 5))
+end
+
 -- Создание клона
 local function createClone()
     if clone then clone:Destroy() end
     
     -- Создаем копию персонажа
     clone = Character:Clone()
-    clone.Parent = Workspace
     
     -- Отключаем все скрипты в клоне
     for _, descendant in ipairs(clone:GetDescendants()) do
@@ -173,16 +218,47 @@ local function createClone()
         end
     end
     
-    -- Делаем клон полупрозрачным
+    -- Находим безопасное место для спавна
+    local spawnPosition = findSafeSpawnPosition()
+    
+    -- Настраиваем клон
+    humanoidClone = clone:FindFirstChildOfClass("Humanoid")
+    if humanoidClone then
+        humanoidClone.WalkSpeed = Humanoid.WalkSpeed
+        humanoidClone.JumpPower = Humanoid.JumpPower
+        
+        -- Отключаем смерть у клона
+        humanoidClone.BreakJointsOnDeath = false
+        humanoidClone:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+    end
+    
+    -- Делаем клон полупрозрачным и без коллизий
     for _, part in ipairs(clone:GetDescendants()) do
         if part:IsA("BasePart") then
             part.Transparency = 0.7
             part.CanCollide = false
+            part.Anchored = false
         end
     end
     
     -- Устанавливаем позицию клона
-    clone:SetPrimaryPartCFrame(Character:GetPrimaryPartCFrame())
+    clone.Parent = Workspace
+    clone:SetPrimaryPartCFrame(CFrame.new(spawnPosition))
+    
+    -- Подключаем управление клоном
+    if humanoidClone then
+        -- Синхронизируем анимации
+        local cloneAnimTrack = humanoidClone:LoadAnimation(animTrack.Animation)
+        cloneAnimTrack:Play()
+        cloneAnimTrack:AdjustSpeed(animTrack.Speed)
+        
+        -- Синхронизация движений
+        RunService.Heartbeat:Connect(function()
+            if clone and humanoidClone and Humanoid then
+                humanoidClone:Move(Humanoid.MoveDirection, false)
+            end
+        end)
+    end
     
     CLONE_MODE = true
     CloneButton.Text = "Удалить клон"
@@ -194,6 +270,7 @@ local function removeClone()
     if clone then
         clone:Destroy()
         clone = nil
+        humanoidClone = nil
     end
     CLONE_MODE = false
     CloneButton.Text = "Создать клон"
@@ -210,8 +287,8 @@ local function startRunMode()
     enableAntiHit()
     
     -- Клиентские настройки
-    Humanoid.WalkSpeed = 0
-    Humanoid.JumpPower = 0
+    Humanoid.WalkSpeed = 16  -- Оставляем нормальную скорость для управления клоном
+    Humanoid.JumpPower = 50
     playRunAnimation()
     
     print("Run mode activated: Ultimate anti-hit enabled")
