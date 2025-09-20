@@ -4,8 +4,9 @@ local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
 
 -- Настройки
-local FLY_SPEED = 15 -- Скорость подъёма
-local FALL_SPEED = 2 -- Скорость падения
+local FLY_SPEED = 30 -- Скорость подъёма (оставлена прежней)
+local FALL_SPEED = 3 -- Скорость падения (сделана медленнее)
+local WALK_SPEED = 16 -- Скорость ходьбы
 local MAX_HEIGHT_GAIN = 21.8 -- Максимальный подъём за одно нажатие
 local isFlying = false
 local heightLimitEnabled = false
@@ -64,6 +65,13 @@ local function resetVelocity()
     end
 end
 
+-- Функция установки скорости ходьбы
+local function setWalkSpeed()
+    if Player.Character and Player.Character:FindFirstChild("Humanoid") then
+        Player.Character.Humanoid.WalkSpeed = WALK_SPEED
+    end
+end
+
 -- Функция для полного выключения скрипта
 local function disableScript()
     scriptActive = false
@@ -84,6 +92,7 @@ flightToggle.MouseButton1Click:Connect(function()
     if flightEnabled then
         flightToggle.Text = "Полёт: ON"
         flightToggle.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+        setWalkSpeed() -- Устанавливаем скорость ходьбы при включении
     else
         flightToggle.Text = "Полёт: OFF"
         flightToggle.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
@@ -128,6 +137,7 @@ local function fly()
             root.Velocity = Vector3.new(root.Velocity.X, FLY_SPEED, root.Velocity.Z)
         end
     else
+        -- Медленное опускание
         root.Velocity = Vector3.new(root.Velocity.X, -FALL_SPEED, root.Velocity.Z)
         currentHeightGain = 0
     end
@@ -155,3 +165,6 @@ RunService.Heartbeat:Connect(function()
         fly()
     end
 end)
+
+-- Устанавливаем скорость ходьбы при старте
+setWalkSpeed()
