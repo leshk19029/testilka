@@ -4,10 +4,10 @@ local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
 
 -- Settings
-local FLY_SPEED = 30 -- Ascension speed
-local FALL_SPEED = 2 -- Very slow descent speed
-local WALK_SPEED = 16 -- Forward/backward movement speed
-local MAX_HEIGHT_GAIN = 21.8 -- Maximum height gain per press
+local FLY_SPEED = 30
+local FALL_SPEED = 3
+local WALK_SPEED = 16
+local MAX_HEIGHT_GAIN = 21.8
 local isFlying = false
 local heightLimitEnabled = false
 local currentHeightGain = 0
@@ -33,7 +33,7 @@ local uiCorner = Instance.new("UICorner")
 uiCorner.CornerRadius = UDim.new(0, 8)
 uiCorner.Parent = frame
 
--- Flight function toggle
+-- Flight toggle
 local flightToggle = Instance.new("TextButton")
 flightToggle.Size = UDim2.new(0, 80, 0, 30)
 flightToggle.Position = UDim2.new(0.1, 0, 0.1, 0)
@@ -58,14 +58,21 @@ flightToggle.Parent = frame
 toggle.Parent = frame
 uiCorner.Parent = frame
 
--- Velocity reset function
+-- Reset velocity function
 local function resetVelocity()
     if Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
         Player.Character.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
     end
 end
 
--- Function to completely disable the script
+-- Set walk speed function
+local function setWalkSpeed()
+    if Player.Character and Player.Character:FindFirstChild("Humanoid") then
+        Player.Character.Humanoid.WalkSpeed = WALK_SPEED
+    end
+end
+
+-- Disable script completely
 local function disableScript()
     scriptActive = false
     resetVelocity()
@@ -79,12 +86,13 @@ UIS.InputBegan:Connect(function(input)
     end
 end)
 
--- Flight function toggle
+-- Flight toggle handler
 flightToggle.MouseButton1Click:Connect(function()
     flightEnabled = not flightEnabled
     if flightEnabled then
         flightToggle.Text = "Flight: ON"
         flightToggle.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+        setWalkSpeed()
     else
         flightToggle.Text = "Flight: OFF"
         flightToggle.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
@@ -92,7 +100,7 @@ flightToggle.MouseButton1Click:Connect(function()
     end
 end)
 
--- Height limit toggle
+-- Height limit toggle handler
 toggle.MouseButton1Click:Connect(function()
     heightLimitEnabled = not heightLimitEnabled
     if heightLimitEnabled then
@@ -103,26 +111,6 @@ toggle.MouseButton1Click:Connect(function()
         toggle.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
     end
 end)
-
--- Function to get movement vector
-local function getMovementVector()
-    local moveVector = Vector3.new(0, 0, 0)
-    
-    if UIS:IsKeyDown(Enum.KeyCode.W) then
-        moveVector = moveVector + Vector3.new(0, 0, -1)
-    end
-    if UIS:IsKeyDown(Enum.KeyCode.S) then
-        moveVector = moveVector + Vector3.new(0, 0, 1)
-    end
-    if UIS:IsKeyDown(Enum.KeyCode.A) then
-        moveVector = moveVector + Vector3.new(-1, 0, 0)
-    end
-    if UIS:IsKeyDown(Enum.KeyCode.D) then
-        moveVector = moveVector + Vector3.new(1, 0, 0)
-    end
-    
-    return moveVector.Unit * WALK_SPEED
-end
 
 -- Main flight function
 local function fly()
@@ -135,39 +123,27 @@ local function fly()
     local root = Player.Character:FindFirstChild("HumanoidRootPart")
     if not root then return end
     
-    local movement = getMovementVector()
-    local camera = workspace.CurrentCamera
-    local lookVector = camera.CFrame.LookVector
-    local rightVector = camera.CFrame.RightVector
-    
-    -- Convert movement relative to camera
-    local relativeMovement = Vector3.new(
-        movement.X * rightVector.X + movement.Z * lookVector.X,
-        0,
-        movement.X * rightVector.Z + movement.Z * lookVector.Z
-    )
-    
     if isFlying then
         if heightLimitEnabled then
             if currentHeightGain < MAX_HEIGHT_GAIN then
                 local remainingGain = MAX_HEIGHT_GAIN - currentHeightGain
                 local actualSpeed = math.min(FLY_SPEED, remainingGain * 10)
-                root.Velocity = Vector3.new(relativeMovement.X, actualSpeed, relativeMovement.Z)
+                root.Velocity = Vector3.new(root.Velocity.X, actualSpeed, root.Velocity.Z)
                 currentHeightGain = currentHeightGain + (actualSpeed * RunService.Heartbeat:Wait())
             else
-                root.Velocity = Vector3.new(relativeMovement.X, 0, relativeMovement.Z)
+                root.Velocity = Vector3.new(root.Velocity.X, 0, root.Velocity.Z)
             end
         else
-            root.Velocity = Vector3.new(relativeMovement.X, FLY_SPEED, relativeMovement.Z)
+            root.Velocity = Vector3.new(root.Velocity.X, FLY_SPEED, root.Velocity.Z)
         end
     else
-        -- Very slow descent while maintaining horizontal speed
-        root.Velocity = Vector3.new(relativeMovement.X, -FALL_SPEED, relativeMovement.Z)
+        -- Slow descent
+        root.Velocity = Vector3.new(root.Velocity.X, -FALL_SPEED, root.Velocity.Z)
         currentHeightGain = 0
     end
 end
 
--- Space key press handling
+-- Space press handler
 UIS.InputBegan:Connect(function(input)
     if not scriptActive or not flightEnabled then return end
     if input.KeyCode == Enum.KeyCode.Space then
@@ -175,7 +151,7 @@ UIS.InputBegan:Connect(function(input)
     end
 end)
 
--- Space key release handling
+-- Space release handler
 UIS.InputEnded:Connect(function(input)
     if not scriptActive or not flightEnabled then return end
     if input.KeyCode == Enum.KeyCode.Space then
@@ -189,3 +165,6 @@ RunService.Heartbeat:Connect(function()
         fly()
     end
 end)
+
+-- Set initial walk speed
+setWalkSpeed()
