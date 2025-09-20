@@ -189,7 +189,7 @@ local function findSafeSpawnPosition()
     -- Генерируем случайный угол от 0 до 360 градусов
     local randomAngle = math.random() * math.pi * 2
     
-    -- Вычисляем позицию на окружности
+    -- Вычисляем позицию на окружности (X и Z координаты)
     local x = center.X + math.cos(randomAngle) * radius
     local z = center.Z + math.sin(randomAngle) * radius
     
@@ -199,7 +199,9 @@ local function findSafeSpawnPosition()
     params.FilterDescendantsInstances = {Character}
     
     -- Бросаем луч сверху вниз для определения высоты земли
-    local raycastResult = workspace:Raycast(Vector3.new(x, center.Y + 50, z), Vector3.new(0, -100, 0), params)
+    local rayOrigin = Vector3.new(x, center.Y + 50, z)
+    local rayDirection = Vector3.new(0, -100, 0)
+    local raycastResult = workspace:Raycast(rayOrigin, rayDirection, params)
     
     if raycastResult and raycastResult.Instance then
         -- Нашли землю - возвращаем позицию немного выше поверхности
@@ -218,6 +220,7 @@ local function teleportToRandomPosition()
     end
     
     -- Временно отключаем антихит для телепортации
+    local wasAnchored = HumanoidRootPart.Anchored
     disableAntiHit()
     
     -- Находим позицию на окружности
@@ -230,10 +233,12 @@ local function teleportToRandomPosition()
     HumanoidRootPart.CFrame = CFrame.new(newPosition)
     originalPosition = newPosition
     
+    print("📡 Телепортирован на позицию: " .. tostring(newPosition))
+    print("📍 Расстояние от исходной точки: " .. tostring((newPosition - HumanoidRootPart.Position).Magnitude))
+    
     -- Снова включаем антихит
     enableAntiHit()
-    
-    print("📡 Телепортирован на позицию в радиусе 30 studs")
+    HumanoidRootPart.Anchored = wasAnchored
 end
 
 -- Старт режима
@@ -254,6 +259,7 @@ local function startRunMode()
     playRunAnimation()
     
     print("✅ Run mode activated: Ultimate anti-hit enabled")
+    print("📍 Исходная позиция: " .. tostring(originalPosition))
 end
 
 -- Стоп режима
@@ -280,11 +286,11 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- Обработчик клика для телепортации
+-- Обработчик клавиши для телепортации
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     
-    if IS_ACTIVE and input.UserInputType == Enum.UserInputType.MouseButton1 then
+    if IS_ACTIVE and input.KeyCode == Enum.KeyCode.Q then
         teleportToRandomPosition()
     end
 end)
@@ -301,32 +307,6 @@ ToggleButton.MouseButton1Click:Connect(function()
         ToggleButton.BackgroundColor3 = Color3.fromRGB(180, 60, 60)
         ToggleButton.Text = "НЕАКТИВНО"
         stopRunMode()
-    end
-end)
-
--- Мониторинг Backpack (опционально)
-Backpack.ChildAdded:Connect(function(tool)
-    if not tool or not tool:IsA("Tool") then return end
-    if tool.Name:lower():find("brainrot") then
-        if not IS_ACTIVE then
-            IS_ACTIVE = true
-            ToggleButton.BackgroundColor3 = Color3.fromRGB(60, 180, 80)
-            ToggleButton.Text = "АКТИВНО"
-            task.wait(0.5)
-            startRunMode()
-        end
-    end
-end)
-
-Backpack.ChildRemoved:Connect(function(tool)
-    if not tool or not tool:IsA("Tool") then return end
-    if tool.Name:lower():find("brainrot") then
-        if IS_ACTIVE then
-            IS_ACTIVE = false
-            ToggleButton.BackgroundColor3 = Color3.fromRGB(180, 60, 60)
-            ToggleButton.Text = "НЕАКТИВНО"
-            stopRunMode()
-        end
     end
 end)
 
@@ -351,5 +331,5 @@ end)
 print("🎯 Brainrot Ultimate Anti-Hit загружен!")
 print("🛡️ CanCollide=false, CanTouch=false, CanQuery=false")
 print("🚫 Неуязвим к лучам, хитбоксам и коллизиям")
-print("📍 ЛКМ - телепортация на окружность радиусом 30 studs")
+print("🎯 Q - телепортация на окружность радиусом 30 studs")
 print("💡 Нажмите кнопку в интерфейсе для активации")
