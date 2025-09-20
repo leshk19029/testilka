@@ -1,7 +1,8 @@
 local Library = loadstring(game:HttpGet('https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/library'))()
 
--- Загружаем модуль спид-буста
+-- Загружаем модули с GitHub
 local SpeedBoostModule = loadstring(game:HttpGet('https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/speed'))()
+local ESPModule = loadstring(game:HttpGet('https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/esp'))()
 
 local Window = Library:CreateMain({
     projName = "Solaris Lib",
@@ -12,6 +13,9 @@ local Window = Library:CreateMain({
 
 local MainTab = Window:CreateCategory("Main")
 local MainSection = MainTab:CreateSection("Functions")
+
+-- Инициализируем ESP модуль
+ESPModule:Init()
 
 -- Anti Effects Toggle
 local AntiEffectsToggle = MainSection:Create("Toggle", "Anti Effects", function(state)
@@ -37,7 +41,6 @@ local SpeedSlider = MainSection:Create("Slider", "Speed Value", function(value)
     SpeedBoostModule:SetSpeed(value)
     print("Speed set to:", value)
     
-    -- Если спид-буст включен, обновляем скорость в реальном времени
     if SpeedBoostModule.Enabled then
         SpeedBoostModule:Disable()
         SpeedBoostModule:Enable()
@@ -48,3 +51,45 @@ end, {
     default = 16,
     precise = true
 })
+
+-- ESP Toggle
+local ESPToggle = MainSection:Create("Toggle", "ESP", function(state)
+    ESPModule:ToggleAll(state)
+    print("ESP " .. (state and "enabled" or "disabled"))
+end, {
+    default = false
+})
+
+-- Отдельные ESP опции
+local TimerESPToggle = MainSection:Create("Toggle", "Timer ESP", function(state)
+    ESPModule:ToggleTimerESP(state)
+    print("Timer ESP " .. (state and "enabled" or "disabled"))
+end, {
+    default = false
+})
+
+local NameTagsToggle = MainSection:Create("Toggle", "NameTags", function(state)
+    ESPModule:ToggleNameTags(state)
+    print("NameTags " .. (state and "enabled" or "disabled"))
+end, {
+    default = false
+})
+
+local WallHackToggle = MainSection:Create("Toggle", "WallHack", function(state)
+    ESPModule:ToggleWallHack(state)
+    print("WallHack " .. (state and "enabled" or "disabled"))
+end, {
+    default = false
+})
+
+-- Обработка смены персонажа для Speed Boost
+SpeedBoostModule.Player.CharacterAdded:Connect(function()
+    if SpeedBoostModule.Enabled then
+        SpeedBoostModule:Disable()
+        SpeedBoostModule:Enable()
+    end
+end)
+
+SpeedBoostModule.Player.CharacterRemoving:Connect(function()
+    SpeedBoostModule:Disable()
+end)
