@@ -3,7 +3,7 @@ local Library = loadstring(game:HttpGet('https://raw.githubusercontent.com/leshk
 -- Загружаем модуль спид-буста
 local SpeedBoostModule = loadstring(game:HttpGet('https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/speed'))()
 
--- Загружаем ESP модуль
+-- Загружаем модуль ESP
 local ESPModule = loadstring(game:HttpGet('https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/esp'))()
 
 local Window = Library:CreateMain({
@@ -19,15 +19,6 @@ local MainSection = MainTab:CreateSection("Functions")
 -- Anti Effects Toggle
 local AntiEffectsToggle = MainSection:Create("Toggle", "Anti Effects", function(state)
     if state then
-        -- Реализация Anti Effects
-        if game:GetService("Players").LocalPlayer.Character then
-            local char = game:GetService("Players").LocalPlayer.Character
-            for _, v in pairs(char:GetDescendants()) do
-                if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Smoke") or v:IsA("Fire") then
-                    v.Enabled = false
-                end
-            end
-        end
         print("Anti Effects enabled")
     else
         print("Anti Effects disabled")
@@ -61,187 +52,10 @@ end, {
     precise = true
 })
 
--- ESP Master Toggle
+-- ESP Toggle
 local ESPToggle = MainSection:Create("Toggle", "ESP", function(state)
-    if ESPModule then
-        ESPModule.ToggleAll(state)
-        print("ESP " .. (state and "enabled" or "disabled"))
-    else
-        warn("ESP Module failed to load!")
-    end
+    ESPModule.ToggleAll(state)
+    print("ESP " .. (state and "enabled" or "disabled"))
 end, {
     default = false
 })
-
--- Добавляем раздел для визуальных настроек
-local VisualsTab = Window:CreateCategory("Visuals")
-local VisualsSection = VisualsTab:CreateSection("ESP Settings")
-
--- Тоггл для Timer ESP
-local TimerESPToggle = VisualsSection:Create("Toggle", "Timer ESP", function(state)
-    if ESPModule then
-        ESPModule.TimerESP.Enabled = state
-        if state then
-            ESPModule.InitializeTimerESP()
-        else
-            -- Очистка таймеров
-            for hitbox, timerData in pairs(ESPModule.TimerESP.ActiveTimers) do
-                if timerData then
-                    if timerData.Billboard then timerData.Billboard:Destroy() end
-                    if timerData.Part then timerData.Part:Destroy() end
-                    if timerData.Connection then timerData.Connection:Disconnect() end
-                end
-            end
-            ESPModule.TimerESP.ActiveTimers = {}
-        end
-        print("Timer ESP " .. (state and "enabled" or "disabled"))
-    end
-end, {
-    default = true
-})
-
--- Тоггл для NameTags
-local NameTagsToggle = VisualsSection:Create("Toggle", "NameTags", function(state)
-    if ESPModule then
-        ESPModule.NameTags.Enabled = state
-        ESPModule.ToggleNameTags(state)
-        print("NameTags " .. (state and "enabled" or "disabled"))
-    end
-end, {
-    default = true
-})
-
--- Тоггл для WallHack
-local WallHackToggle = VisualsSection:Create("Toggle", "WallHack", function(state)
-    if ESPModule then
-        ESPModule.WallHack.Enabled = state
-        ESPModule.ToggleWallHack(state)
-        print("WallHack " .. (state and "enabled" or "disabled"))
-    end
-end, {
-    default = true
-})
-
--- Тоггл для Pet Display
-local PetDisplayToggle = VisualsSection:Create("Toggle", "Pet Display", function(state)
-    if ESPModule then
-        ESPModule.PetDisplay.Enabled = state
-        ESPModule.TogglePetDisplay(state)
-        print("Pet Display " .. (state and "enabled" or "disabled"))
-    end
-end, {
-    default = true
-})
-
--- Настройки цвета для WallHack
-local WallHackColorPicker = VisualsSection:Create("ColorPicker", "WallHack Color", function(color)
-    if ESPModule then
-        ESPModule.WallHack.FillColor = color
-        ESPModule.WallHack.OutlineColor = color
-        
-        -- Обновляем существующие highlights
-        for player, highlight in pairs(ESPModule.WallHack.Highlights) do
-            if highlight then
-                highlight.FillColor = color
-                highlight.OutlineColor = color
-            end
-        end
-    end
-end, {
-    default = Color3.fromRGB(0, 170, 255)
-})
-
--- Прозрачность заливки WallHack
-local FillTransparencySlider = VisualsSection:Create("Slider", "Fill Transparency", function(value)
-    if ESPModule then
-        ESPModule.WallHack.FillTransparency = value
-        
-        -- Обновляем существующие highlights
-        for player, highlight in pairs(ESPModule.WallHack.Highlights) do
-            if highlight then
-                highlight.FillTransparency = value
-            end
-        end
-    end
-end, {
-    min = 0,
-    max = 1,
-    default = 0.22,
-    precise = true
-})
-
--- Прозрачность контура WallHack
-local OutlineTransparencySlider = VisualsSection:Create("Slider", "Outline Transparency", function(value)
-    if ESPModule then
-        ESPModule.WallHack.OutlineTransparency = value
-        
-        -- Обновляем существующие highlights
-        for player, highlight in pairs(ESPModule.WallHack.Highlights) do
-            if highlight then
-                highlight.OutlineTransparency = value
-            end
-        end
-    end
-end, {
-    min = 0,
-    max = 1,
-    default = 0.08,
-    precise = true
-})
-
--- Добавляем раздел для других визуальных настроек
-local OtherVisualsSection = VisualsTab:CreateSection("Other Visuals")
-
--- Тоггл для Fullbright
-local FullbrightToggle = OtherVisualsSection:Create("Toggle", "Fullbright", function(state)
-    if state then
-        game:GetService("Lighting").GlobalShadows = false
-        game:GetService("Lighting").Brightness = 2
-        print("Fullbright enabled")
-    else
-        game:GetService("Lighting").GlobalShadows = true
-        game:GetService("Lighting").Brightness = 1
-        print("Fullbright disabled")
-    end
-end, {
-    default = false
-})
-
--- Функция для обработки ошибок загрузки ESP модуля
-if not ESPModule then
-    warn("Failed to load ESP Module from GitHub!")
-    
-    -- Создаем заглушку для ESP модуля
-    ESPModule = {
-        ToggleAll = function(state)
-            warn("ESP Module not loaded!")
-        end,
-        TimerESP = {
-            Enabled = false,
-            ActiveTimers = {},
-            InitializeTimerESP = function() end
-        },
-        NameTags = {
-            Enabled = false,
-            ActiveNameTags = {},
-            ToggleNameTags = function() end
-        },
-        WallHack = {
-            Enabled = false,
-            Highlights = {},
-            FillColor = Color3.fromRGB(0, 170, 255),
-            FillTransparency = 0.22,
-            OutlineColor = Color3.fromRGB(0, 170, 255),
-            OutlineTransparency = 0.08,
-            ToggleWallHack = function() end
-        },
-        PetDisplay = {
-            Enabled = false,
-            TogglePetDisplay = function() end
-        }
-    }
-    
-    -- Отключаем ESP тоггл, если модуль не загрузился
-    ESPToggle:SetState(false)
-    ESPToggle:SetDisabled(true)
-end
