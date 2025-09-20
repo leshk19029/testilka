@@ -2,13 +2,12 @@ local Player = game:GetService("Players").LocalPlayer
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
-local TweenService = game:GetService("TweenService")
 
 -- Settings
-local FLY_SPEED = 30
-local FALL_SPEED = 2
-local WALK_SPEED = 16
-local MAX_HEIGHT_GAIN = 21.8
+local FLY_SPEED = 30 -- Ascension speed
+local FALL_SPEED = 2 -- Very slow descent speed
+local WALK_SPEED = 16 -- Forward/backward movement speed
+local MAX_HEIGHT_GAIN = 21.8 -- Maximum height gain per press
 local isFlying = false
 local heightLimitEnabled = false
 local currentHeightGain = 0
@@ -34,7 +33,7 @@ local uiCorner = Instance.new("UICorner")
 uiCorner.CornerRadius = UDim.new(0, 8)
 uiCorner.Parent = frame
 
--- Flight toggle
+-- Flight function toggle
 local flightToggle = Instance.new("TextButton")
 flightToggle.Size = UDim2.new(0, 80, 0, 30)
 flightToggle.Position = UDim2.new(0.1, 0, 0.1, 0)
@@ -59,50 +58,14 @@ flightToggle.Parent = frame
 toggle.Parent = frame
 uiCorner.Parent = frame
 
--- Mobile drag functionality
-local dragInput, dragStart, startPos
-local dragSpeed = 0.25
-
-local function updateInput(input)
-    local delta = input.Position - dragStart
-    local position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    
-    local tween = TweenService:Create(frame, TweenInfo.new(dragSpeed), {Position = position})
-    tween:Play()
-end
-
-frame.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragStart = input.Position
-        startPos = frame.Position
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragInput = nil
-            end
-        end)
-    end
-end)
-
-frame.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-        dragInput = input
-    end
-end)
-
-UIS.InputChanged:Connect(function(input)
-    if input == dragInput then
-        updateInput(input)
-    end
-end)
-
--- Reset velocity function
+-- Velocity reset function
 local function resetVelocity()
     if Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
         Player.Character.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
     end
 end
 
--- Disable script function
+-- Function to completely disable the script
 local function disableScript()
     scriptActive = false
     resetVelocity()
@@ -116,7 +79,7 @@ UIS.InputBegan:Connect(function(input)
     end
 end)
 
--- Flight toggle
+-- Flight function toggle
 flightToggle.MouseButton1Click:Connect(function()
     flightEnabled = not flightEnabled
     if flightEnabled then
@@ -141,7 +104,7 @@ toggle.MouseButton1Click:Connect(function()
     end
 end)
 
--- Movement vector function
+-- Function to get movement vector
 local function getMovementVector()
     local moveVector = Vector3.new(0, 0, 0)
     
@@ -177,6 +140,7 @@ local function fly()
     local lookVector = camera.CFrame.LookVector
     local rightVector = camera.CFrame.RightVector
     
+    -- Convert movement relative to camera
     local relativeMovement = Vector3.new(
         movement.X * rightVector.X + movement.Z * lookVector.X,
         0,
@@ -197,12 +161,13 @@ local function fly()
             root.Velocity = Vector3.new(relativeMovement.X, FLY_SPEED, relativeMovement.Z)
         end
     else
+        -- Very slow descent while maintaining horizontal speed
         root.Velocity = Vector3.new(relativeMovement.X, -FALL_SPEED, relativeMovement.Z)
         currentHeightGain = 0
     end
 end
 
--- Space press handler
+-- Space key press handling
 UIS.InputBegan:Connect(function(input)
     if not scriptActive or not flightEnabled then return end
     if input.KeyCode == Enum.KeyCode.Space then
@@ -210,7 +175,7 @@ UIS.InputBegan:Connect(function(input)
     end
 end)
 
--- Space release handler
+-- Space key release handling
 UIS.InputEnded:Connect(function(input)
     if not scriptActive or not flightEnabled then return end
     if input.KeyCode == Enum.KeyCode.Space then
