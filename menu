@@ -1,10 +1,10 @@
 local Library = loadstring(game:HttpGet('https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/library'))()
 
 -- Загружаем модуль спид-буста
-local SpeedBoostModule = loadstring(game:HttpGet('https://raw.githubusercontent.com/ваш-username/ваш-репозиторий/main/speedboost_module.lua'))()
+local SpeedBoostModule = loadstring(game:HttpGet('https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/2'))()
 
 local Window = Library:CreateMain({
-    projName = "Solaris Lib",
+    projName = "Pury Hub",
     Resizable = true,
     MinSize = UDim2.new(0, 700, 0, 460),
     MaxSize = UDim2.new(0, 1000, 0, 600)
