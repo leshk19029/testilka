@@ -1,0 +1,419 @@
+local ESPModule = {}
+ESPModule.Enabled = false
+
+-- Сервисы
+local Players = game:GetService('Players')
+local RunService = game:GetService('RunService')
+local Workspace = game:GetService('Workspace')
+local TextService = game:GetService('TextService')
+
+-- Настройки
+ESPModule.TimerESP = {Enabled = false, ActiveTimers = {}}
+ESPModule.NameTags = {Enabled = false, ActiveNameTags = {}, Connections = {}}
+ESPModule.WallHack = {
+    Enabled = false, 
+    Highlights = {},
+    FillColor = Color3.fromRGB(0, 170, 255),
+    FillTransparency = 0.22,
+    OutlineColor = Color3.fromRGB(0, 170, 255),
+    OutlineTransparency = 0.08
+}
+ESPModule.PetDisplay = {Enabled = false}
+
+-- Локальные переменные
+local localPlayer = Players.LocalPlayer
+local heartbeat = RunService.Heartbeat
+
+-- Вспомогательные функции
+local function CalculateYOffset(podiumCount)
+    if podiumCount > 18 then return -26.27
+    elseif podiumCount > 10 then return -17.27
+    else return -8.27 end
+end
+
+local function UpdateTimerText(timerText, timeString)
+    if timeString == '0s' then
+        timerText.Text = 'UNLOCKED'
+        timerText.TextColor3 = Color3.fromRGB(0, 255, 0)
+        timerText.Font = Enum.Font.SciFi
+    else
+        timerText.Text = timeString
+        timerText.TextColor3 = Color3.fromRGB(255, 255, 255)
+        timerText.Font = Enum.Font.SciFi
+    end
+end
+
+-- Timer ESP функции
+function ESPModule:CreateTimerDisplay(hitbox, remainingTime)
+    if not hitbox or not remainingTime then return end
+
+    if self.TimerESP.ActiveTimers[hitbox] then
+        local timerData = self.TimerESP.ActiveTimers[hitbox]
+        if timerData.Billboard then timerData.Billboard:Destroy() end
+        if timerData.Part then timerData.Part:Destroy() end
+        if timerData.Connection then timerData.Connection:Disconnect() end
+        self.TimerESP.ActiveTimers[hitbox] = nil
+    end
+
+    local plot = hitbox.Parent
+    local animalPodiums = plot:FindFirstChild('AnimalPodiums')
+    local podiumCount = animalPodiums and #animalPodiums:GetChildren() or 0
+    local y_offset = CalculateYOffset(podiumCount)
+
+    local timerPart = Instance.new('Part')
+    timerPart.Name = 'TimerPart'
+    timerPart.Size = Vector3.new(4, 1, 1)
+    timerPart.Transparency = 1
+    timerPart.CanCollide = false
+    timerPart.Anchored = true
+    timerPart.Parent = Workspace
+    timerPart.CFrame = hitbox.CFrame * CFrame.new(0, y_offset, 0)
+
+    local billboardTimer = Instance.new('BillboardGui')
+    billboardTimer.Name = 'TimerDisplay'
+    billboardTimer.Size = UDim2.new(5, 0, 2, 0)
+    billboardTimer.Adornee = timerPart
+    billboardTimer.StudsOffset = Vector3.new(0, 0, 0)
+    billboardTimer.AlwaysOnTop = true
+    billboardTimer.MaxDistance = 10000
+    billboardTimer.Parent = timerPart
+
+    local timerText = Instance.new('TextLabel')
+    timerText.Name = 'TimerText'
+    timerText.Size = UDim2.new(1, 0, 1, 0)
+    timerText.TextSize = 26
+    timerText.BackgroundTransparency = 1
+    timerText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    timerText.TextStrokeColor3 = Color3.new(0, 0, 0)
+    timerText.TextStrokeTransparency = 0.1
+    timerText.Font = Enum.Font.SciFi
+    timerText.TextXAlignment = Enum.TextXAlignment.Center
+    timerText.TextYAlignment = Enum.TextYAlignment.Center
+
+    UpdateTimerText(timerText, remainingTime.Text)
+    timerText.Parent = billboardTimer
+
+    local currentYOffset = y_offset
+    local connection = heartbeat:Connect(function()
+        if hitbox and hitbox.Parent then
+            local newPodiumCount = animalPodiums and #animalPodiums:GetChildren() or 0
+            local newYOffset = CalculateYOffset(newPodiumCount)
+            
+            if newYOffset ~= currentYOffset then
+                currentYOffset = newYOffset
+                timerPart.CFrame = hitbox.CFrame * CFrame.new(0, currentYOffset, 0)
+            end
+        else
+            connection:Disconnect()
+            if timerPart then timerPart:Destroy() end
+        end
+    end)
+
+    self.TimerESP.ActiveTimers[hitbox] = {
+        Billboard = billboardTimer,
+        Part = timerPart,
+        Connection = connection,
+        TextLabel = timerText,
+        CurrentOffset = y_offset,
+    }
+
+    remainingTime:GetPropertyChangedSignal('Text'):Connect(function()
+        UpdateTimerText(timerText, remainingTime.Text)
+    end)
+end
+
+function ESPModule:SetupPlotTimer(plot)
+    if not plot then return end
+    local Purchases = plot:FindFirstChild('Purchases')
+    if not Purchases then return end
+    local Plotblock = Purchases:FindFirstChild('PlotBlock')
+    if not Plotblock then return end
+
+    local main = Plotblock:FindFirstChild('Main')
+    local hitbox = plot:FindFirstChild('StealHitbox')
+    if not main or not hitbox then return end
+
+    local billboardgui = main:FindFirstChild('BillboardGui')
+    if not billboardgui then return end
+
+    local remainingTime = billboardgui:FindFirstChild('RemainingTime')
+    if not remainingTime then return end
+
+    if self.TimerESP.Enabled then
+        self:CreateTimerDisplay(hitbox, remainingTime)
+    end
+end
+
+function ESPModule:InitializeTimerESP()
+    for hitbox, timerData in pairs(self.TimerESP.ActiveTimers) do
+        if timerData then
+            if timerData.Billboard then timerData.Billboard:Destroy() end
+            if timerData.Part then timerData.Part:Destroy() end
+            if timerData.Connection then timerData.Connection:Disconnect() end
+        end
+    end
+    self.TimerESP.ActiveTimers = {}
+
+    local Plots = Workspace:FindFirstChild('Plots')
+    if Plots then
+        for _, plot in pairs(Plots:GetChildren()) do
+            task.spawn(function() self:SetupPlotTimer(plot) end)
+        end
+
+        Plots.ChildAdded:Connect(function(plot)
+            task.wait(1)
+            self:SetupPlotTimer(plot)
+        end)
+    end
+end
+
+-- NameTags функции (цепляются к HumanoidRootPart)
+function ESPModule:CalculateBackgroundWidth(text)
+    local textSize = TextService:GetTextSize(text, 14, Enum.Font.GothamBold, Vector2.new(1000, 22))
+    return math.max(60, textSize.X + 20)
+end
+
+function ESPModule:GetDisplayName(player)
+    return player.DisplayName
+end
+
+function ESPModule:UpdateNameTag(nameTag, player)
+    if not nameTag or not nameTag:FindFirstChild('Background') or not nameTag:FindFirstChild('Name') then return end
+    local nameLabel = nameTag.Name
+    local displayName = self:GetDisplayName(player)
+    nameLabel.Text = displayName
+end
+
+function ESPModule:CreateNameTag(player)
+    if not player.Character then return end
+    local humanoidRootPart = player.Character:FindFirstChild('HumanoidRootPart')
+    if not humanoidRootPart then return end
+
+    if self.NameTags.ActiveNameTags[player] then
+        self.NameTags.ActiveNameTags[player]:Destroy()
+    end
+
+    local displayName = self:GetDisplayName(player)
+    local width = self:CalculateBackgroundWidth(displayName)
+
+    local nameTagPart = Instance.new('Part')
+    nameTagPart.Name = 'NameTagPart'
+    nameTagPart.Size = Vector3.new(2, 0.5, 0.5)
+    nameTagPart.Transparency = 1
+    nameTagPart.CanCollide = false
+    nameTagPart.Anchored = true
+    nameTagPart.Parent = Workspace
+
+    local billboard = Instance.new('BillboardGui')
+    billboard.Name = 'Nametag_' .. player.Name
+    billboard.Adornee = nameTagPart
+    billboard.Size = UDim2.new(0, width, 0, 18)
+    billboard.StudsOffset = Vector3.new(0, 0, 0)
+    billboard.AlwaysOnTop = true
+    billboard.MaxDistance = 500
+    billboard.Parent = nameTagPart
+
+    local background = Instance.new('Frame')
+    background.Name = 'Background'
+    background.Size = UDim2.new(0, width, 0, 18)
+    background.Position = UDim2.new(0.5, -width/2, 0, 0)
+    background.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    background.BackgroundTransparency = 0.25
+    background.BorderSizePixel = 0
+
+    local corner = Instance.new('UICorner')
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = background
+    background.Parent = billboard
+
+    local nameLabel = Instance.new('TextLabel')
+    nameLabel.Name = 'Name'
+    nameLabel.Size = UDim2.new(1, -12, 1, 0)
+    nameLabel.Position = UDim2.new(0, 6, 0, 0)
+    nameLabel.Text = displayName
+    nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    nameLabel.Font = Enum.Font.GothamBold
+    nameLabel.TextSize = 14
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.TextXAlignment = Enum.TextXAlignment.Center
+    nameLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    nameLabel.TextStrokeTransparency = 0.3
+    nameLabel.Parent = billboard
+
+    local connection = heartbeat:Connect(function()
+        if player.Character and humanoidRootPart then
+            -- Цепляемся к HumanoidRootPart
+            nameTagPart.CFrame = humanoidRootPart.CFrame * CFrame.new(0, 2.5, 0)
+        else
+            connection:Disconnect()
+            if nameTagPart then nameTagPart:Destroy() end
+        end
+    end)
+
+    self.NameTags.ActiveNameTags[player] = billboard
+
+    if not self.NameTags.Connections[player] then
+        self.NameTags.Connections[player] = player:GetPropertyChangedSignal('DisplayName'):Connect(function()
+            if self.NameTags.Enabled and self.NameTags.ActiveNameTags[player] then
+                self:UpdateNameTag(billboard, player)
+            end
+        end)
+    end
+end
+
+function ESPModule:RemovePlayerNameTag(player)
+    if self.NameTags.ActiveNameTags[player] then
+        self.NameTags.ActiveNameTags[player]:Destroy()
+        self.NameTags.ActiveNameTags[player] = nil
+    end
+    
+    if self.NameTags.Connections[player] then
+        self.NameTags.Connections[player]:Disconnect()
+        self.NameTags.Connections[player] = nil
+    end
+end
+
+-- WallHack функции
+function ESPModule:CreateHighlight(character, player)
+    if self.WallHack.Highlights[player] then
+        self.WallHack.Highlights[player]:Destroy()
+    end
+    
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "Highlight"
+    highlight.Adornee = character
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    highlight.FillColor = self.WallHack.FillColor
+    highlight.FillTransparency = self.WallHack.FillTransparency
+    highlight.OutlineColor = self.WallHack.OutlineColor
+    highlight.OutlineTransparency = self.WallHack.OutlineTransparency
+    highlight.Parent = character
+    
+    self.WallHack.Highlights[player] = highlight
+    return highlight
+end
+
+-- Pet Display функции (упрощенная версия)
+function ESPModule:TogglePetDisplay(state)
+    self.PetDisplay.Enabled = state
+    -- Здесь можно добавить функционал для Pet Display
+end
+
+-- Основные функции управления
+function ESPModule:ToggleTimerESP(state)
+    self.TimerESP.Enabled = state
+    if state then
+        self:InitializeTimerESP()
+    else
+        for hitbox, timerData in pairs(self.TimerESP.ActiveTimers) do
+            if timerData then
+                if timerData.Billboard then timerData.Billboard:Destroy() end
+                if timerData.Part then timerData.Part:Destroy() end
+                if timerData.Connection then timerData.Connection:Disconnect() end
+            end
+        end
+        self.TimerESP.ActiveTimers = {}
+    end
+end
+
+function ESPModule:ToggleNameTags(state)
+    self.NameTags.Enabled = state
+    if state then
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= localPlayer then
+                if not self.NameTags.Connections[player] then
+                    self.NameTags.Connections[player] = player.CharacterAdded:Connect(function()
+                        task.wait(1)
+                        if self.NameTags.Enabled then
+                            self:CreateNameTag(player)
+                        end
+                    end)
+                end
+                if player.Character then
+                    self:CreateNameTag(player)
+                end
+            end
+        end
+    else
+        for player, tagData in pairs(self.NameTags.ActiveNameTags) do
+            if tagData then tagData:Destroy() end
+        end
+        self.NameTags.ActiveNameTags = {}
+    end
+end
+
+function ESPModule:ToggleWallHack(state)
+    self.WallHack.Enabled = state
+    if state then
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= localPlayer and player.Character then
+                self:CreateHighlight(player.Character, player)
+            end
+        end
+    else
+        for player, highlight in pairs(self.WallHack.Highlights) do
+            if highlight then highlight:Destroy() end
+        end
+        self.WallHack.Highlights = {}
+    end
+end
+
+function ESPModule:ToggleAll(state)
+    self.Enabled = state
+    self:ToggleTimerESP(state)
+    self:ToggleNameTags(state)
+    self:ToggleWallHack(state)
+    self:TogglePetDisplay(state)
+end
+
+-- Обработчики игроков
+function ESPModule:OnPlayerAdded(player)
+    if player == localPlayer then return end
+    
+    player.CharacterAdded:Connect(function(character)
+        if self.WallHack.Enabled then
+            self:CreateHighlight(character, player)
+        end
+        if self.NameTags.Enabled then
+            task.wait(1)
+            self:CreateNameTag(player)
+        end
+    end)
+    
+    if player.Character then
+        if self.WallHack.Enabled then
+            self:CreateHighlight(player.Character, player)
+        end
+        if self.NameTags.Enabled then
+            self:CreateNameTag(player)
+        end
+    end
+end
+
+function ESPModule:OnPlayerRemoving(player)
+    if self.WallHack.Highlights[player] then
+        self.WallHack.Highlights[player]:Destroy()
+        self.WallHack.Highlights[player] = nil
+    end
+    self:RemovePlayerNameTag(player)
+end
+
+-- Инициализация
+function ESPModule:Init()
+    Players.PlayerAdded:Connect(function(player) self:OnPlayerAdded(player) end)
+    Players.PlayerRemoving:Connect(function(player) self:OnPlayerRemoving(player) end)
+    
+    -- Инициализируем существующих игроков
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= localPlayer then
+            self:OnPlayerAdded(player)
+        end
+    end
+    
+    -- Инициализируем TimerESP
+    if self.TimerESP.Enabled then
+        self:InitializeTimerESP()
+    end
+end
+
+return ESPModule
