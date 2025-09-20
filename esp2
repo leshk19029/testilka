@@ -1,249 +1,294 @@
--- LocalScript: Brainrot Anti-Hit + Draggable Menu (без обхода местоположения)
--- Помещайте в StarterPlayerScripts
+
+-- =========================================================
+-- Brainrot Ultimate Anti-Hit: Hold-to-Activate + Movable UI
+-- =========================================================
 
 local Players = game:GetService("Players")
-local PhysicsService = game:GetService("PhysicsService")
 local RunService = game:GetService("RunService")
-local Backpack = Players.LocalPlayer:WaitForChild("Backpack")
 local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
+local Backpack = player:WaitForChild("Backpack")
+local PlayerGui = player:WaitForChild("PlayerGui")
+
 local Character = player.Character or player.CharacterAdded:Wait()
 local Humanoid = Character:WaitForChild("Humanoid", 10)
 local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart", 10)
 
+-- Config
+local IS_ACTIVE = false
 local RUN_ANIMATION_ID = 2510235062
 local animTrack = nil
 
-local isActive = true
-local antiHitEnabled = false
-local currentGroupName = nil
-local originalCollisionGroups = {}
+-- Anti-hit state
+local hitboxDisabled = false
+local originalProperties = {}
 
--- Сохраняем оригинальные группы столкновений
-local function saveOriginalCollision()
-    originalCollisionGroups = {}
+-- UI
+local panel, holdButton
+
+-- Positioning
+local originalPosition = HumanoidRootPart.Position
+local targetPosition = originalPosition -- будет рассчитываться при активации
+
+-- Сохранение оригинальных свойств частей
+local function saveOriginalProperties()
+    originalProperties = {}
     for _, part in ipairs(Character:GetDescendants()) do
         if part:IsA("BasePart") then
-            originalCollisionGroups[part] = part.CollisionGroup
+            originalProperties[part] = {
+                CanCollide = part.CanCollide,
+                CanTouch = part.CanTouch,
+                CanQuery = part.CanQuery,
+                Transparency = part.Transparency
+            }
         end
     end
 end
 
--- Создание и настройкаCollisionGroup для anti-hit
-local function ensureCollisionGroup(groupName)
-    local physics = PhysicsService
-    pcall(function()
-        physics:CreateCollisionGroup(groupName)
-    end)
-    -- Мир (Default) — сталкивается
-    pcall(function()
-        physics:CollisionGroupSetCollidable(groupName, "Default", true)
-    end)
-    -- Враги (Enemy) — не сталкивается
-    pcall(function()
-        if physics:CollisionGroupGetCollidable(groupName, "Enemy") == true then
-            physics:CollisionGroupSetCollidable(groupName, "Enemy", false)
-        end
-    end)
-end
-
-local function applyAntiHitGroup(groupName)
-    saveOriginalCollision()
-    ensureCollisionGroup(groupName)
-    local gid = PhysicsService:GetCollisionGroupId(groupName)
-    for _, part in ipairs(Character:GetDescendants()) do
-        if part:IsA("BasePart") then
-            pcall(function()
-                part.CollisionGroup = groupName
-                part.CollisionGroupId = gid
-            end)
-        end
-    end
-    antiHitEnabled = true
-end
-
-local function restoreOriginalCollision()
-    for part, groupName in pairs(originalCollisionGroups) do
-        if part and part.Parent then
-            pcall(function()
-                part.CollisionGroup = groupName
-            end)
-        end
-    end
-    antiHitEnabled = false
-end
-
+-- Включаем антихит (показываем как ноль столкновений и т. п.)
 local function enableAntiHit()
-    if antiHitEnabled then return end
-    currentGroupName = "BrainrotAntiHit_" .. tostring(math.random(10000, 99999))
-    applyAntiHitGroup(currentGroupName)
+    if hitboxDisabled then return end
+
+    saveOriginalProperties()
+
+    for _, part in ipairs(Character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = false
+            part.CanTouch = false
+            part.CanQuery = false
+            part.Transparency = 0.5
+            part.Velocity = Vector3.new(0, 0, 0)
+            part.RotVelocity = Vector3.new(0, 0, 0)
+        end
+    end
+
+    HumanoidRootPart.Anchored = true
+
+    hitboxDisabled = true
+    print("🛡️ Антихит активирован: коллизии отключены")
 end
 
+-- Возвращаем оригинальные свойства
 local function disableAntiHit()
-    if not antiHitEnabled then return end
-    pcall(function()
-        restoreOriginalCollision()
-        currentGroupName = nil
-    end)
+    if not hitboxDisabled then return end
+
+    for part, props in pairs(originalProperties) do
+        if part and part.Parent then
+            part.CanCollide = props.CanCollide
+            part.CanTouch = props.CanTouch
+            part.CanQuery = props.CanQuery
+            part.Transparency = props.Transparency
+        end
+    end
+
+    HumanoidRootPart.Anchored = false
+
+    hitboxDisabled = false
+    print("🛡️ Антихит деактивирован")
 end
 
+-- Анимация бега (как в оригинале, можно оставить или убрать)
 local function playRunAnimation()
     if animTrack and animTrack.IsPlaying then animTrack:Stop() end
-    local ok, err = pcall(function()
+    local success, err = pcall(function()
         local animation = Instance.new("Animation")
         animation.AnimationId = "rbxassetid://" .. RUN_ANIMATION_ID
         animTrack = Humanoid:LoadAnimation(animation)
         animTrack:Play(0.1)
         animTrack.Looped = true
     end)
-    if not ok then
+    if success then
+        print("Run animation started")
+    else
         warn("Animation error: " .. (err or "Unknown"))
     end
 end
 
+local function stopRunAnimation()
+    if animTrack then
+        animTrack:Stop()
+        animTrack = nil
+    end
+end
+
+-- Запуск режима Hold-to-Activate
 local function startRunMode()
-    if not Humanoid or not HumanoidRootPart or not Character or not Character.Parent then return end
+    if not Humanoid or not HumanoidRootPart or not Character.Parent then return end
+
+    originalPosition = HumanoidRootPart.Position
+    targetPosition = originalPosition + (HumanoidRootPart.CFrame.LookVector * 5) -- 5 studs вперёд от исходной позиции
+
     enableAntiHit()
-    -- Разрешаем движение
-    Humanoid.WalkSpeed = 16
-    Humanoid.JumpPower = 50
+
+    Humanoid.WalkSpeed = 0
+    Humanoid.JumpPower = 0
     playRunAnimation()
-    print("Run mode activated: Anti-Hit enabled")
+
+    HumanoidRootPart.Anchored = true
+
+    IS_ACTIVE = true
+    if holdButton then holdButton.Text = "Brainrot: ON (hold)" end
+    print("Brainrot активирован: держитесь в новом месте")
 end
 
+-- Остановка режима
 local function stopRunMode()
-    if not Humanoid or not HumanoidRootPart or not Character or not Character.Parent then return end
+    if not Humanoid or not HumanoidRootPart or not Character.Parent then return end
+
     disableAntiHit()
+
     Humanoid.WalkSpeed = 16
     Humanoid.JumpPower = 50
-    if animTrack then animTrack:Stop() end
-    print("Run mode deactivated")
-end
+    stopRunAnimation()
 
--- Графическое меню (draggable) с переключателем
-local function createUI()
-    local playerGui = player:WaitForChild("PlayerGui")
+    HumanoidRootPart.Anchored = false
 
-    local ScreenGui = Instance.new("ScreenGui")
-    ScreenGui.Name = "BrainrotUI"
-    ScreenGui.Parent = playerGui
-    ScreenGui.ResetOnSpawn = false
-
-    local Frame = Instance.new("Frame")
-    Frame.Name = "MainFrame"
-    Frame.Size = UDim2.new(0, 230, 0, 120)
-    Frame.Position = UDim2.new(0.5, -115, 0, 20)
-    Frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-    Frame.BackgroundTransparency = 0.15
-    Frame.Active = true
-    Frame.Draggable = true
-    Frame.Parent = ScreenGui
-
-    local Title = Instance.new("TextLabel", Frame)
-    Title.Size = UDim2.new(1, 0, 0, 26)
-    Title.Position = UDim2.new(0, 0, 0, 0)
-    Title.BackgroundTransparency = 1
-    Title.Text = "Brainrot Menu"
-    Title.Font = Enum.Font.SourceSansBold
-    Title.TextColor3 = Color3.new(1, 1, 1)
-    Title.TextScaled = true
-    Title.Parent = Frame
-
-    local Label = Instance.new("TextLabel", Frame)
-    Label.Text = "Anti-Hit"
-    Label.Size = UDim2.new(0, 100, 0, 26)
-    Label.Position = UDim2.new(0, 10, 0, 36)
-    Label.BackgroundTransparency = 1
-    Label.TextColor3 = Color3.new(1, 1, 1)
-    Label.TextScaled = true
-    Label.Parent = Frame
-
-    local SwitchFrame = Instance.new("Frame", Frame)
-    SwitchFrame.Name = "Switch"
-    SwitchFrame.Size = UDim2.new(0, 60, 0, 28)
-    SwitchFrame.Position = UDim2.new(1, -70, 0, 38)
-    SwitchFrame.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-    SwitchFrame.BorderSizePixel = 0
-    SwitchFrame.Parent = Frame
-
-    local Knob = Instance.new("Frame", SwitchFrame)
-    Knob.Name = "Knob"
-    Knob.Size = UDim2.new(0, 28, 0, 28)
-    Knob.Position = UDim2.new(0, 0, 0, 0)
-    Knob.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
-    Knob.BorderSizePixel = 0
-    Knob.Parent = SwitchFrame
-
-    local function updateUI(state)
-        if state then
-            Knob.Position = UDim2.new(0, 32, 0, 0)
-            Knob.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
-        else
-            Knob.Position = UDim2.new(0, 0, 0, 0)
-            Knob.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-        end
+    IS_ACTIVE = false
+    -- Вернуть в исходную позицию
+    local pos = originalPosition
+    if HumanoidRootPart then
+        HumanoidRootPart.CFrame = CFrame.new(pos)
+        HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
+        HumanoidRootPart.RotVelocity = Vector3.new(0, 0, 0)
     end
 
-    SwitchFrame.InputBegan:Connect(function(input)
+    if holdButton then holdButton.Text = "Brainrot: OFF (hold)" end
+    print("Brainrot отключен")
+end
+
+-- Обновление UI текста по состоянию активировано/нет
+local function updateUI()
+    if holdButton then
+        holdButton.Text = IS_ACTIVE and "Brainrot: ON (hold)" or "Brainrot: OFF (hold)"
+    end
+end
+
+-- Движение панели UI (draggable)
+local function makePanelDraggable(p)
+    local dragging = false
+    local dragStart = Vector2.new()
+    local panelStart = p.Position
+
+    p.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            isActive = not isActive
-            updateUI(isActive)
-            if isActive then
-                startRunMode()
-            else
-                stopRunMode()
-            end
+            dragging = true
+            dragStart = Vector2.new(input.Position.X, input.Position.Y)
+            panelStart = p.Position
         end
     end)
 
-    updateUI(isActive)
-end
-
--- Мониторинг ToolsBrainrot в Backpack
-local function onToolAdded(tool)
-    if not tool or not tool:IsA("Tool") then return end
-    if tostring(tool.Name):lower():find("brainrot") then
-        task.wait(0.5)
-        if isActive then
-            startRunMode()
+    p.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
         end
-    end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = Vector2.new(input.Position.X - dragStart.X, input.Position.Y - dragStart.Y)
+            p.Position = UDim2.new(
+                panelStart.X.Scale, panelStart.X.Offset + delta.X,
+                panelStart.Y.Scale, panelStart.Y.Offset + delta.Y
+            )
+        end
+    end)
 end
 
-local function onToolRemoved(tool)
-    if not tool or not tool:IsA("Tool") then return end
-    if tostring(tool.Name):lower():find("brainrot") then
-        stopRunMode()
-    end
+-- Создание простого UI (movable panel с кнопкой Hold)
+local function createUI()
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "BrainrotUI"
+    screenGui.Parent = PlayerGui
+    screenGui.ResetOnSpawn = false
+
+    panel = Instance.new("Frame")
+    panel.Name = "BrainrotPanel"
+    panel.Parent = screenGui
+    panel.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    panel.BackgroundTransparency = 0.15
+    panel.Size = UDim2.new(0, 220, 0, 100)
+    panel.Position = UDim2.new(0.5, -110, 0.5, -50)
+
+    local title = Instance.new("TextLabel")
+    title.Parent = panel
+    title.Size = UDim2.new(1, 0, 0, 20)
+    title.Position = UDim2.new(0, 0, 0, 0)
+    title.BackgroundTransparency = 1
+    title.Text = "Brainrot Controller"
+    title.TextColor3 = Color3.new(1, 1, 1)
+    title.Font = Enum.Font.SourceSansBold
+    title.TextScaled = true
+
+    holdButton = Instance.new("TextButton")
+    holdButton.Name = "HoldButton"
+    holdButton.Parent = panel
+    holdButton.Size = UDim2.new(0, 180, 0, 50)
+    holdButton.Position = UDim2.new(0.5, -90, 0.5, 25)
+    holdButton.AnchorPoint = Vector2.new(0.5, 0)
+    holdButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    holdButton.TextColor3 = Color3.new(1, 1, 1)
+    holdButton.Text = "Brainrot: OFF (hold)"
+    holdButton.Font = Enum.Font.SourceSans
+    holdButton.TextScaled = true
+
+    -- Драг-панель
+    makePanelDraggable(panel)
+
+    screenGui.Parent = PlayerGui
 end
 
-player.CharacterAdded:Connect(function(newCharacter)
-    Character = newCharacter
-    task.wait(1)
-    Humanoid = Character:WaitForChild("Humanoid", 10)
-    HumanoidRootPart = Character:WaitForChild("HumanoidRootPart", 10)
-    -- Сброс состояния anti-hit
-    antiHitEnabled = false
-    if isActive then
-        local tool = Backpack:FindFirstChildOfClass("Tool")
-        if tool and tostring(tool.Name):lower():find("brainrot") then
-            task.wait(2)
-            startRunMode()
+-- Обработчики удержания кнопки
+holdButton.MouseButton1Down:Connect(function()
+    -- Активируем режим
+    if not IS_ACTIVE then
+        startRunMode()
+        updateUI()
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        if IS_ACTIVE then
+            stopRunMode()
+            updateUI()
         end
     end
 end)
 
-spawn(createUI)
-
-Backpack.ChildAdded:Connect(onToolAdded)
-Backpack.ChildRemoved:Connect(onToolRemoved)
-
-if isActive then
-    task.wait(1)
-    local tool = Backpack:FindFirstChildOfClass("Tool")
-    if tool and tostring(tool.Name):lower():find("brainrot") then
-        task.wait(2)
+-- Обработчик перезапуска персонажа
+local function onCharacterAdded(newCharacter)
+    Character = newCharacter
+    Humanoid = Character:WaitForChild("Humanoid", 10)
+    HumanoidRootPart = Character:WaitForChild("HumanoidRootPart", 10)
+    originalPosition = HumanoidRootPart.Position
+    hitboxDisabled = false
+    if IS_ACTIVE then
+        -- Если активирован на момент респауна - продолжить держать местоположение
         startRunMode()
+        updateUI()
     end
 end
+
+-- Настройки на старте
+createUI()
+updateUI()
+
+-- Поддержка переподключения персонажа
+player.CharacterAdded:Connect(onCharacterAdded)
+-- Инициализация начального состояния
+if Character then
+    onCharacterAdded(Character)
+end
+
+-- Не забываем держать оригинальную позицию, чтобы при старте вернуть
+RunService.Heartbeat:Connect(function()
+    if IS_ACTIVE and HumanoidRootPart and HumanoidRootPart.Parent then
+        -- Непрерывно держим персонажа на целевой позиции
+        local look = HumanoidRootPart.CFrame.LookVector
+        targetPosition = originalPosition + (look * 5)
+        HumanoidRootPart.CFrame = CFrame.new(targetPosition)
+        HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
+        HumanoidRootPart.RotVelocity = Vector3.new(0, 0, 0)
+    end
+end)
