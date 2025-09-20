@@ -5,7 +5,7 @@ local CoreGui = game:GetService("CoreGui")
 local Workspace = game:GetService("Workspace")
 
 -- Настройки
-local FALL_GRAVITY = 3
+local FALL_GRAVITY = 1
 local NORMAL_GRAVITY = Workspace.Gravity
 local FLY_SPEED = 30
 local MAX_HEIGHT_GAIN = 21.8
