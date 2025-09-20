@@ -1,51 +1,54 @@
 return function()
-local Players = game:GetService('Players')
-local RunService = game:GetService('RunService')
+local SpeedBoostModule = {}
+SpeedBoostModule.Enabled = false
+SpeedBoostModule.CurrentSpeed = 16
+SpeedBoostModule.VelocityConnection = nil
 
-local module = {}
-
-local speedEnabled = false
-local currentSpeed = 25
-local velocityConnection = nil
-
-local function applyVelocity()
-    if not speedEnabled then return end
+function SpeedBoostModule:Enable()
+    local Players = game:GetService('Players')
+    local RunService = game:GetService('RunService')
     
     local player = Players.LocalPlayer
     local character = player.Character
     if not character then return end
     
-    local humanoid = character:FindFirstChild("Humanoid")
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
-    
-    if humanoid and rootPart then
-        local moveDirection = humanoid.MoveDirection
-        if moveDirection.Magnitude > 0 then
-            local velocity = moveDirection * currentSpeed
+    self:Disable()
+
+    self.VelocityConnection = RunService.Heartbeat:Connect(function()
+        if not self.Enabled or not character or not character.Parent then
+            return
+        end
+        
+        local humanoid = character:FindFirstChild('Humanoid')
+        local rootPart = character:FindFirstChild('HumanoidRootPart')
+        
+        if humanoid and rootPart and humanoid.MoveDirection.Magnitude > 0 then
+            local moveDirection = humanoid.MoveDirection
+            local velocity = moveDirection * self.CurrentSpeed
             rootPart.Velocity = Vector3.new(velocity.X, rootPart.Velocity.Y, velocity.Z)
-        else
-            rootPart.Velocity = Vector3.new(0, rootPart.Velocity.Y, 0)
         end
+    end)
+end
+
+function SpeedBoostModule:Disable()
+    if self.VelocityConnection then
+        self.VelocityConnection:Disconnect()
+        self.VelocityConnection = nil
     end
 end
 
-function module.toggleSpeedBoost(state)
-    speedEnabled = state
-    
-    if speedEnabled then
-        if velocityConnection then
-            velocityConnection:Disconnect()
-        end
-        velocityConnection = RunService.RenderStepped:Connect(applyVelocity)
+function SpeedBoostModule:SetSpeed(speed)
+    self.CurrentSpeed = math.clamp(speed, 1, 45)
+end
+
+function SpeedBoostModule:SetEnabled(state)
+    self.Enabled = state
+    if state then
+        self:Enable()
     else
-        if velocityConnection then
-            velocityConnection:Disconnect()
-            velocityConnection = nil
-        end
+        self:Disable()
     end
 end
 
-function module.setSpeed(value)
-    currentSpeed = math.clamp(value, 1, 45)
-end
+return SpeedBoostModule
 end
