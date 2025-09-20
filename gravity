@@ -1,19 +1,18 @@
 local Player = game:GetService("Players").LocalPlayer
 local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
 local Workspace = game:GetService("Workspace")
 
 -- Настройки
-local GRAVITY_VALUE = 1
+local FALL_GRAVITY = 3
+local NORMAL_GRAVITY = Workspace.Gravity
 local scriptActive = true
 local gravityEnabled = false
 
--- Сохраняем оригинальную гравитацию
-local originalGravity = Workspace.Gravity
-
 -- Создаем интерфейс
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "GravityControl"
+screenGui.Name = "FallGravityControl"
 screenGui.Parent = CoreGui
 
 local frame = Instance.new("Frame")
@@ -34,7 +33,7 @@ local titleText = Instance.new("TextLabel")
 titleText.Size = UDim2.new(1, 0, 0, 20)
 titleText.Position = UDim2.new(0, 0, 0, 5)
 titleText.BackgroundTransparency = 1
-titleText.Text = "GRAVITY"
+titleText.Text = "FALL GRAVITY"
 titleText.TextColor3 = Color3.fromRGB(200, 200, 200)
 titleText.Font = Enum.Font.GothamBold
 titleText.TextSize = 16
@@ -50,53 +49,93 @@ gravityToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
 gravityToggle.Font = Enum.Font.GothamBold
 gravityToggle.TextSize = 14
 
--- Текст значения гравитации
-local gravityValueText = Instance.new("TextLabel")
-gravityValueText.Size = UDim2.new(1, 0, 0, 20)
-gravityValueText.Position = UDim2.new(0, 0, 0.75, 0)
-gravityValueText.BackgroundTransparency = 1
-gravityValueText.Text = "G: " .. tostring(Workspace.Gravity)
-gravityValueText.TextColor3 = Color3.fromRGB(200, 200, 200)
-gravityValueText.Font = Enum.Font.Gotham
-gravityValueText.TextSize = 12
-gravityValueText.TextXAlignment = Enum.TextXAlignment.Center
+-- Текст статуса
+local statusText = Instance.new("TextLabel")
+statusText.Size = UDim2.new(1, 0, 0, 20)
+statusText.Position = UDim2.new(0, 0, 0.75, 0)
+statusText.BackgroundTransparency = 1
+statusText.Text = "Standing"
+statusText.TextColor3 = Color3.fromRGB(200, 200, 200)
+statusText.Font = Enum.Font.Gotham
+statusText.TextSize = 12
+statusText.TextXAlignment = Enum.TextXAlignment.Center
 
 -- Иерархия объектов
 titleText.Parent = frame
 gravityToggle.Parent = frame
-gravityValueText.Parent = frame
+statusText.Parent = frame
 uiCorner.Parent = frame
 frame.Parent = screenGui
 
--- Функция включения/выключения гравитации
-local function toggleGravity()
+-- Переменные для отслеживания состояния
+local isFalling = false
+local wasOnGround = false
+
+-- Функция включения/выключения системы
+local function toggleGravitySystem()
     gravityEnabled = not gravityEnabled
     
     if gravityEnabled then
-        Workspace.Gravity = GRAVITY_VALUE
         gravityToggle.Text = "ON"
         gravityToggle.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+        statusText.Text = "Active"
     else
-        Workspace.Gravity = originalGravity
         gravityToggle.Text = "OFF"
         gravityToggle.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+        statusText.Text = "Disabled"
+        -- Восстанавливаем нормальную гравитацию при выключении
+        Workspace.Gravity = NORMAL_GRAVITY
     end
-    
-    gravityValueText.Text = "G: " .. tostring(Workspace.Gravity)
 end
 
 -- Обработчик клика по переключателю
-gravityToggle.MouseButton1Click:Connect(toggleGravity)
+gravityToggle.MouseButton1Click:Connect(toggleGravitySystem)
+
+-- Функция проверки состояния падения
+local function checkFallingState()
+    if not gravityEnabled or not Player.Character then
+        return
+    end
+    
+    local humanoid = Player.Character:FindFirstChild("Humanoid")
+    local rootPart = Player.Character:FindFirstChild("HumanoidRootPart")
+    
+    if humanoid and rootPart then
+        local isOnGround = humanoid.FloorMaterial ~= Enum.Material.Air
+        
+        -- Определяем, падаем ли мы
+        if not isOnGround and rootPart.Velocity.Y < -2 then
+            if not isFalling then
+                isFalling = true
+                Workspace.Gravity = FALL_GRAVITY
+                statusText.Text = "Falling (G: " .. FALL_GRAVITY .. ")"
+            end
+        else
+            if isFalling then
+                isFalling = false
+                Workspace.Gravity = NORMAL_GRAVITY
+                statusText.Text = "Standing (G: " .. NORMAL_GRAVITY .. ")"
+            else
+                statusText.Text = isOnGround and "Standing" or "Jumping"
+            end
+        end
+        
+        wasOnGround = isOnGround
+    end
+end
 
 -- Обработчик F2 для выключения скрипта
 UIS.InputBegan:Connect(function(input)
     if input.KeyCode == Enum.KeyCode.F2 then
         scriptActive = false
         -- Восстанавливаем оригинальную гравитацию перед выходом
-        Workspace.Gravity = originalGravity
+        Workspace.Gravity = NORMAL_GRAVITY
         screenGui:Destroy()
         print("Скрипт выключен, гравитация восстановлена")
     end
 end)
 
-print("Гравитация контроллер загружен. Нажмите F2 для выключения.")
+-- Основной цикл проверки состояния
+RunService.Heartbeat:Connect(checkFallingState)
+
+print("Fall Gravity контроллер загружен. Нажмите F2 для выключения.")
