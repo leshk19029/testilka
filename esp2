@@ -1,188 +1,73 @@
--- =========================================================
--- Ultimate Fake Position: Client-Only Decoy
--- =========================================================
+local frame = Instance.new("Frame", screenGui)
+frame.Size = UDim2.new(0, 240, 0, 80)
+frame.Position = UDim2.new(0, 10, 0, 10)
+frame.BackgroundColor3 = Color3.new(0.1, 0.1, 0.1)
+frame.BackgroundTransparency = 0.2
+frame.BorderSizePixel = 0
 
-local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
+local toggle = Instance.new("TextButton", frame)
+toggle.Size = UDim2.new(0.9, 0, 0.4, 0)
+toggle.Position = UDim2.new(0.05, 0, 0.28, 0)
+toggle.Text = "Camera Smooth: ON"
+toggle.TextScaled = true
+toggle.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+toggle.TextColor3 = Color3.new(1, 1, 1)
 
-local player = Players.LocalPlayer
-local Character = player.Character or player.CharacterAdded:Wait()
-local Humanoid = Character:WaitForChild("Humanoid")
-local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+local note = Instance.new("TextLabel", frame)
+note.Size = UDim2.new(1, 0, 0.25, 0)
+note.Position = UDim2.new(0, 0, 0.68, 0)
+note.Text = "Note: только визуальная плавность, сервер не affected"
+note.TextScaled = true
+note.BackgroundTransparency = 1
+note.TextColor3 = Color3.new(1, 1, 1)
 
--- Настройки
-local IS_ACTIVE = false
-local DECOY_DURATION = 8 -- секунд
-local decoy = nil
-local originalPosition = Vector3.new()
-local originalTransparency = {}
-
--- Создаем реалистичную фейковую копию
-local function createRealisticDecoy()
-    if decoy then decoy:Destroy() end
-    
-    -- Сохраняем текущую позицию
-    originalPosition = HumanoidRootPart.Position
-    
-    -- Создаем модель-копию
-    decoy = Instance.new("Model")
-    decoy.Name = "FakeDecoy_" .. player.Name
-    
-    -- Копируем все части персонажа
-    for _, child in ipairs(Character:GetChildren()) do
-        if child:IsA("BasePart") or child:IsA("MeshPart") then
-            local clone = child:Clone()
-            clone:ClearAllChildren() -- Убираем дочерние объекты
-            
-            -- Делаем части полупрозрачными и невидимыми для лучей
-            clone.CanCollide = false
-            clone.CanTouch = false
-            clone.CanQuery = false
-            clone.Transparency = 0.6
-            clone.Color = Color3.fromRGB(255, 150, 50)
-            clone.Material = Enum.Material.Neon
-            
-            -- Сохраняем оригинальную прозрачность
-            originalTransparency[clone] = child.Transparency
-            
-            clone.Parent = decoy
-        elseif child:IsA("Accessory") then
-            -- Копируем аксессуары
-            local accessory = child:Clone()
-            if accessory:FindFirstChildWhichIsA("BasePart") then
-                local handle = accessory:FindFirstChildWhichIsA("BasePart")
-                handle.CanCollide = false
-                handle.CanTouch = false
-                handle.CanQuery = false
-                handle.Transparency = 0.6
-                handle.Color = Color3.fromRGB(255, 150, 50)
-            end
-            accessory.Parent = decoy
-        end
-    end
-    
-    -- Позиционируем декой
-    decoy:SetPrimaryPartCFrame(HumanoidRootPart.CFrame)
-    decoy.Parent = Workspace
-    
-    -- Добавляем свечение и эффекты
-    local glow = Instance.new("PointLight")
-    glow.Brightness = 3
-    glow.Range = 8
-    glow.Color = Color3.fromRGB(255, 100, 0)
-    glow.Parent = decoy.PrimaryPart
-    
-    -- Эффект исчезновения через время
-    local disappearTween = TweenService:Create(decoy.PrimaryPart, TweenInfo.new(DECOY_DURATION - 1, Enum.EasingStyle.Quad), {
-        Transparency = 1,
-        Size = Vector3.new(0.1, 0.1, 0.1)
-    })
-    
-    disappearTween:Play()
-    
-    return decoy
+return toggle
 end
 
--- Делаем реального персонажа "призраком"
-local function makeCharacterGhost()
-    for _, part in ipairs(Character:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.LocalTransparencyModifier = 0.7 -- Видим себя полупрозрачным
-        end
+local toggleButton = createMenu()
+
+local function updateTargetCFrame(char) local hrp = char:FindFirstChild("HumanoidRootPart") if not hrp then return end local worldOffset = hrp.CFrame:VectorToWorldSpace(offset) local camPos = hrp.Position + worldOffset targetCFrame = CFrame.new(camPos, hrp.Position) end
+
+local currentCharacter = nil local function onCharacterAdded(char) currentCharacter = char updateTargetCFrame(char) end
+
+local function onCharacterRemoving() currentCharacter = nil targetCFrame = nil end
+
+local function enableSmoothCamera() smoothingEnabled = true end
+
+local function disableSmoothCamera() smoothingEnabled = false end
+
+-- Переключатель в меню toggleButton.MouseButton1Click:Connect(function() smoothingEnabled = not smoothingEnabled toggleButton.Text = smoothingEnabled and "Camera Smooth: ON" or "Camera Smooth: OFF" end)
+
+-- Обновление цели камеры при смене персонажа player.CharacterAdded:Connect(function(char) onCharacterAdded(char) end)
+
+player.CharacterRemoving:Connect(onCharacterRemoving)
+
+-- Основной цикл: плавная интерполяция камеры RunService.RenderStepped:Connect(function(dt) if not smoothingEnabled then return end
+
+if not currentCharacter or not currentCharacter.Parent then
+    local camChar = player.Character
+    if camChar then
+        updateTargetCFrame(camChar)
     end
+    return
 end
 
--- Возвращаем нормальную видимость
-local function restoreCharacterVisibility()
-    for _, part in ipairs(Character:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.LocalTransparencyModifier = 0
-        end
-    end
+if not currentCharacter:FindFirstChild("HumanoidRootPart") then return end
+
+local newCF = targetCFrame
+if not newCF then
+    updateTargetCFrame(currentCharacter)
+    newCF = targetCFrame
+    if not newCF then return end
 end
 
--- Запуск режима фейковой позиции
-local function startFakePosition()
-    if IS_ACTIVE or not Character or not HumanoidRootPart then return end
-    IS_ACTIVE = true
-    
-    -- Создаем фейковую копию
-    createRealisticDecoy()
-    
-    -- Делаем себя полупрозрачным
-    makeCharacterGhost()
-    
-    print("🎭 Фейковая позиция активирована! Длительность: " .. DECOY_DURATION .. "сек")
-    
-    -- Автоматическое отключение
-    task.delay(DECOY_DURATION, function()
-        if IS_ACTIVE then
-            stopFakePosition()
-        end
-    end)
+-- Небольшая плавность
+if camera.CameraType ~= Enum.CameraType.Scriptable then
+    camera.CameraType = Enum.CameraType.Scriptable
 end
-
--- Остановка режима
-local function stopFakePosition()
-    if not IS_ACTIVE then return end
-    IS_ACTIVE = false
-    
-    -- Удаляем декой
-    if decoy then
-        decoy:Destroy()
-        decoy = nil
-    end
-    
-    -- Возвращаем видимость
-    restoreCharacterVisibility()
-    
-    print("🎭 Фейковая позиция деактивирована")
-end
-
--- Обработчик ввода
-UserInputService.InputBegan:Connect(function(input, processed)
-    if processed then return end
-    
-    if input.KeyCode == Enum.KeyCode.V then
-        if IS_ACTIVE then
-            stopFakePosition()
-        else
-            startFakePosition()
-        end
-    end
+local currentCF = camera.CFrame
+local blended = currentCF:Lerp(newCF, 0.15)
+camera.CFrame = blended
 end)
 
--- Автоочистка при выходе или смерти
-player.CharacterRemoving:Connect(function()
-    stopFakePosition()
-end)
-
-Character:GetPropertyChangedSignal("Parent"):Connect(function()
-    if Character.Parent == nil then
-        stopFakePosition()
-    end
-end)
-
--- Обновление позиции декоя (если нужно оставаться на месте)
-RunService.Heartbeat:Connect(function()
-    if IS_ACTIVE and decoy and decoy.PrimaryPart then
-        -- Можно добавить небольшую анимацию или пульсацию
-        decoy.PrimaryPart.CFrame = CFrame.new(originalPosition) * CFrame.Angles(0, math.sin(tick() * 2) * 0.1, 0)
-    end
-end)
-
-print("🎭 Ultimate Fake Position загружен!")
-print("🔑 V - Создать фейковую позицию на " .. DECOY_DURATION .. " секунд")
-print("👻 Другие увидят вашу копию на старом месте")
-print("⚡ Вы сможете свободно перемещаться как 'призрак'")
-print("💡 Работает полностью на клиенте!")
-
--- Визуальные подсказки
-game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Fake Position Loaded",
-    Text = "Press V to create decoy for " .. DECOY_DURATION .. " seconds",
-    Duration = 5
-})
+print("Brainrot: готово. Локальная плавная камера активна. Управление через меню в UI.")
