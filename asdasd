@@ -1,43 +1,61 @@
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/library"))()
-
 local Player = game:GetService("Players").LocalPlayer
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
 
 -- Настройки
 local FLY_SPEED = 30
-local FALL_SPEED = 2
+local FALL_SPEED = 5
 local MAX_HEIGHT_GAIN = 21.8
 local isFlying = false
 local heightLimitEnabled = false
-local initialYPosition = 0
 local currentHeightGain = 0
 local scriptActive = true
 local flightEnabled = false
 
--- Создаем главное окно
-local Window = Library:CreateMain({
-    projName = "Flight Control",
-    Resizable = true,
-    MinSize = UDim2.new(0, 400, 0, 300),
-    MaxSize = UDim2.new(0, 600, 0, 500)
-})
+-- Создаем интерфейс
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "FlightControl"
+screenGui.Parent = CoreGui
 
--- Создаем категории
-local MainTab = Window:CreateCategory("Основные настройки")
-local SettingsTab = Window:CreateCategory("Дополнительно")
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 150, 0, 80)
+frame.Position = UDim2.new(0.8, 0, 0.2, 0)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+frame.BackgroundTransparency = 0.3
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Draggable = true
 
--- Создаем секции
-local FlightSection = MainTab:CreateSection("Управление полётом")
-local HeightSection = MainTab:CreateSection("Ограничения высоты")
-local InfoSection = SettingsTab:CreateSection("Информация")
-local SettingsSection = SettingsTab:CreateSection("Настройки")
+local uiCorner = Instance.new("UICorner")
+uiCorner.CornerRadius = UDim.new(0, 8)
+uiCorner.Parent = frame
 
--- Переменные для элементов UI
-local FlightToggle
-local HeightToggle
-local HeightLabel
-local MaxHeightSlider
+-- Переключатель функции полета
+local flightToggle = Instance.new("TextButton")
+flightToggle.Size = UDim2.new(0, 50, 0, 25)
+flightToggle.Position = UDim2.new(0.05, 0, 0.1, 0)
+flightToggle.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+flightToggle.Text = "OFF"
+flightToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+flightToggle.Font = Enum.Font.GothamBold
+flightToggle.TextSize = 14
+
+-- Переключатель ограничения высоты
+local toggle = Instance.new("TextButton")
+toggle.Size = UDim2.new(0, 50, 0, 25)
+toggle.Position = UDim2.new(0.05, 0, 0.5, 0)
+toggle.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+toggle.Text = "OFF"
+toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggle.Font = Enum.Font.GothamBold
+toggle.TextSize = 14
+
+-- Иерархия объектов
+flightToggle.Parent = frame
+toggle.Parent = frame
+uiCorner.Parent = frame
+frame.Parent = screenGui
 
 -- Функция сброса скорости
 local function resetVelocity()
@@ -49,26 +67,41 @@ end
 -- Функция для полного выключения скрипта
 local function disableScript()
     scriptActive = false
-    flightEnabled = false
     resetVelocity()
-    
-    -- Отключаем все соединения
-    for _, connection in pairs(getconnections(UIS.InputBegan)) do
-        connection:Disable()
-    end
-    for _, connection in pairs(getconnections(UIS.InputEnded)) do
-        connection:Disable()
-    end
-    for _, connection in pairs(getconnections(RunService.Heartbeat)) do
-        connection:Disable()
-    end
-    
-    game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "Скрипт выключен",
-        Text = "Все функции отключены",
-        Duration = 3
-    })
+    screenGui:Destroy()
 end
+
+-- Обработчик F2
+UIS.InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.F2 then
+        disableScript()
+    end
+end)
+
+-- Переключатель функции полета
+flightToggle.MouseButton1Click:Connect(function()
+    flightEnabled = not flightEnabled
+    if flightEnabled then
+        flightToggle.Text = "ON"
+        flightToggle.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+    else
+        flightToggle.Text = "OFF"
+        flightToggle.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+        resetVelocity()
+    end
+end)
+
+-- Переключатель ограничения высоты
+toggle.MouseButton1Click:Connect(function()
+    heightLimitEnabled = not heightLimitEnabled
+    if heightLimitEnabled then
+        toggle.Text = "ON"
+        toggle.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+    else
+        toggle.Text = "OFF"
+        toggle.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    end
+end)
 
 -- Основная функция полёта
 local function fly()
@@ -81,13 +114,8 @@ local function fly()
     local root = Player.Character:FindFirstChild("HumanoidRootPart")
     if not root then return end
     
-    -- Обновляем отображение высоты
-    local currentY = math.floor(root.Position.Y * 10) / 10
-    HeightLabel:SetText("Текущая высота: "..tostring(currentY))
-    
     if isFlying then
         if heightLimitEnabled then
-            -- Проверяем максимальную высоту
             if currentHeightGain < MAX_HEIGHT_GAIN then
                 local remainingGain = MAX_HEIGHT_GAIN - currentHeightGain
                 local actualSpeed = math.min(FLY_SPEED, remainingGain * 10)
@@ -97,56 +125,13 @@ local function fly()
                 root.Velocity = Vector3.new(root.Velocity.X, 0, root.Velocity.Z)
             end
         else
-            -- Без ограничения высоты
             root.Velocity = Vector3.new(root.Velocity.X, FLY_SPEED, root.Velocity.Z)
         end
     else
-        -- Медленно падаем вниз
         root.Velocity = Vector3.new(root.Velocity.X, -FALL_SPEED, root.Velocity.Z)
         currentHeightGain = 0
     end
 end
-
--- Создаем элементы UI
-FlightToggle = FlightSection:Create("Toggle", "Включить полёт", function(state)
-    flightEnabled = state
-    if state then
-        game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = "Полёт включён",
-            Text = "Нажмите ПРОБЕЛ для полёта",
-            Duration = 2
-        })
-    else
-        resetVelocity()
-        game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = "Полёт выключен",
-            Text = "Движение возвращено к стандартному",
-            Duration = 2
-        })
-    end
-end, {default = false})
-
-HeightToggle = HeightSection:Create("Toggle", "Ограничение высоты", function(state)
-    heightLimitEnabled = state
-end, {default = false})
-
-MaxHeightSlider = HeightSection:Create("Slider", "Максимальный подъём", function(value)
-    MAX_HEIGHT_GAIN = value
-end, {min = 5, max = 50, default = 21.8, precise = true})
-
-HeightLabel = InfoSection:Create("TextLabel", "Текущая высота: 0")
-
-local FlySpeedSlider = SettingsSection:Create("Slider", "Скорость полёта", function(value)
-    FLY_SPEED = value
-end, {min = 10, max = 100, default = 30, precise = false})
-
-local FallSpeedSlider = SettingsSection:Create("Slider", "Скорость падения", function(value)
-    FALL_SPEED = value
-end, {min = 1, max = 10, default = 2, precise = false})
-
-SettingsSection:Create("Button", "Выключить скрипт", function()
-    disableScript()
-end, {animated = true})
 
 -- Обработка нажатия пробела
 UIS.InputBegan:Connect(function(input)
@@ -154,10 +139,7 @@ UIS.InputBegan:Connect(function(input)
     if input.KeyCode == Enum.KeyCode.Space then
         isFlying = true
         if heightLimitEnabled then
-            if Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
-                initialYPosition = Player.Character.HumanoidRootPart.Position.Y
-                currentHeightGain = 0
-            end
+            currentHeightGain = 0
         end
     end
 end)
@@ -176,10 +158,3 @@ RunService.Heartbeat:Connect(function()
         fly()
     end
 end)
-
--- Уведомление при старте
-game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Flight Control загружен",
-    Text = "Функция полёта по умолчанию ВЫКЛЮЧЕНА\nВключите её в интерфейсе",
-    Duration = 5
-})
