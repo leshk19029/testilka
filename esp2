@@ -1,251 +1,168 @@
+-- ========================================================= -- Brainrot Ultimate Anti-Hit: Hold-to-Activate + Movable UI -- =========================================================
 
--- =========================================================
--- Brainrot Ultimate Anti-Hit: Hold-to-Activate + Movable UI
--- =========================================================
+local Players = game:GetService("Players") local RunService = game:GetService("RunService") local UserInputService = game:GetService("UserInputService")
 
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
+local player = Players.LocalPlayer local Backpack = player:WaitForChild("Backpack") local PlayerGui = player:WaitForChild("PlayerGui")
 
-local player = Players.LocalPlayer
-local Backpack = player:WaitForChild("Backpack")
-local PlayerGui = player:WaitForChild("PlayerGui")
+local Character = player.Character or player.CharacterAdded:Wait() local Humanoid = Character:WaitForChild("Humanoid", 10) local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart", 10)
 
-local Character = player.Character or player.CharacterAdded:Wait()
-local Humanoid = Character:WaitForChild("Humanoid", 10)
-local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart", 10)
+-- Config local IS_ACTIVE = false local animTrack = nil -- удалено использование анимации; оставлено для совместимости (не активируется)
 
--- Config
-local IS_ACTIVE = false
-local RUN_ANIMATION_ID = 2510235062
-local animTrack = nil
+-- Anti-hit state local hitboxDisabled = false local originalProperties = {}
 
--- Anti-hit state
-local hitboxDisabled = false
-local originalProperties = {}
+-- UI local panel, holdButton
 
--- UI
-local panel, holdButton
+-- Positioning local originalPosition = HumanoidRootPart.Position local targetPosition = originalPosition -- будет рассчитываться при активации
 
--- Positioning
-local originalPosition = HumanoidRootPart.Position
-local targetPosition = originalPosition -- будет рассчитываться при активации
+-- Сохранение оригинальных свойств частей local function saveOriginalProperties() originalProperties = {} for _, part in ipairs(Character:GetDescendants()) do if part:IsA("BasePart") then originalProperties[part] = { CanCollide = part.CanCollide, CanTouch = part.CanTouch, CanQuery = part.CanQuery, Transparency = part.Transparency } end end end
 
--- Сохранение оригинальных свойств частей
-local function saveOriginalProperties()
-    originalProperties = {}
-    for _, part in ipairs(Character:GetDescendants()) do
-        if part:IsA("BasePart") then
-            originalProperties[part] = {
-                CanCollide = part.CanCollide,
-                CanTouch = part.CanTouch,
-                CanQuery = part.CanQuery,
-                Transparency = part.Transparency
-            }
-        end
+-- Включаем антихит (показываем как ноль столкновений и т. п.) local function enableAntiHit() if hitboxDisabled then return end
+
+saveOriginalProperties()
+
+for _, part in ipairs(Character:GetDescendants()) do
+    if part:IsA("BasePart") then
+        part.CanCollide = false
+        part.CanTouch = false
+        part.CanQuery = false
+        part.Transparency = 0.5
+        part.Velocity = Vector3.new(0, 0, 0)
+        part.RotVelocity = Vector3.new(0, 0, 0)
     end
 end
 
--- Включаем антихит (показываем как ноль столкновений и т. п.)
-local function enableAntiHit()
-    if hitboxDisabled then return end
+HumanoidRootPart.Anchored = true
 
-    saveOriginalProperties()
-
-    for _, part in ipairs(Character:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.CanCollide = false
-            part.CanTouch = false
-            part.CanQuery = false
-            part.Transparency = 0.5
-            part.Velocity = Vector3.new(0, 0, 0)
-            part.RotVelocity = Vector3.new(0, 0, 0)
-        end
-    end
-
-    HumanoidRootPart.Anchored = true
-
-    hitboxDisabled = true
-    print("🛡️ Антихит активирован: коллизии отключены")
+hitboxDisabled = true
+print("🛡️ Антихит активирован: коллизии отключены")
 end
 
--- Возвращаем оригинальные свойства
-local function disableAntiHit()
-    if not hitboxDisabled then return end
+-- Возвращаем оригинальные свойства local function disableAntiHit() if not hitboxDisabled then return end
 
-    for part, props in pairs(originalProperties) do
-        if part and part.Parent then
-            part.CanCollide = props.CanCollide
-            part.CanTouch = props.CanTouch
-            part.CanQuery = props.CanQuery
-            part.Transparency = props.Transparency
-        end
-    end
-
-    HumanoidRootPart.Anchored = false
-
-    hitboxDisabled = false
-    print("🛡️ Антихит деактивирован")
-end
-
--- Анимация бега (как в оригинале, можно оставить или убрать)
-local function playRunAnimation()
-    if animTrack and animTrack.IsPlaying then animTrack:Stop() end
-    local success, err = pcall(function()
-        local animation = Instance.new("Animation")
-        animation.AnimationId = "rbxassetid://" .. RUN_ANIMATION_ID
-        animTrack = Humanoid:LoadAnimation(animation)
-        animTrack:Play(0.1)
-        animTrack.Looped = true
-    end)
-    if success then
-        print("Run animation started")
-    else
-        warn("Animation error: " .. (err or "Unknown"))
+for part, props in pairs(originalProperties) do
+    if part and part.Parent then
+        part.CanCollide = props.CanCollide
+        part.CanTouch = props.CanTouch
+        part.CanQuery = props.CanQuery
+        part.Transparency = props.Transparency
     end
 end
 
-local function stopRunAnimation()
-    if animTrack then
-        animTrack:Stop()
-        animTrack = nil
-    end
+HumanoidRootPart.Anchored = false
+
+hitboxDisabled = false
+print("🛡️ Антихит деактивирован")
 end
 
--- Запуск режима Hold-to-Activate
-local function startRunMode()
-    if not Humanoid or not HumanoidRootPart or not Character.Parent then return end
+-- Удалена анимация бега
 
-    originalPosition = HumanoidRootPart.Position
-    targetPosition = originalPosition + (HumanoidRootPart.CFrame.LookVector * 5) -- 5 studs вперёд от исходной позиции
+-- Запуск режима Hold-to-Activate local function startRunMode() if not Humanoid or not HumanoidRootPart or not Character.Parent then return end
 
-    enableAntiHit()
+originalPosition = HumanoidRootPart.Position
+targetPosition = originalPosition + (HumanoidRootPart.CFrame.LookVector * 5) -- 5 studs вперёд от исходной позиции
 
-    Humanoid.WalkSpeed = 0
-    Humanoid.JumpPower = 0
-    playRunAnimation()
+enableAntiHit()
 
-    HumanoidRootPart.Anchored = true
+Humanoid.WalkSpeed = 0
+Humanoid.JumpPower = 0
 
-    IS_ACTIVE = true
-    if holdButton then holdButton.Text = "Brainrot: ON (hold)" end
-    print("Brainrot активирован: держитесь в новом месте")
+HumanoidRootPart.Anchored = true
+
+IS_ACTIVE = true
+if holdButton then holdButton.Text = "Brainrot: ON (hold)" end
+print("Brainrot активирован: держитесь в новом месте")
 end
 
--- Остановка режима
-local function stopRunMode()
-    if not Humanoid or not HumanoidRootPart or not Character.Parent then return end
+-- Остановка режима local function stopRunMode() if not Humanoid or not HumanoidRootPart or not Character.Parent then return end
 
-    disableAntiHit()
+disableAntiHit()
 
-    Humanoid.WalkSpeed = 16
-    Humanoid.JumpPower = 50
-    stopRunAnimation()
+Humanoid.WalkSpeed = 16
+Humanoid.JumpPower = 50
 
-    HumanoidRootPart.Anchored = false
+HumanoidRootPart.Anchored = false
 
-    IS_ACTIVE = false
-    -- Вернуть в исходную позицию
-    local pos = originalPosition
-    if HumanoidRootPart then
-        HumanoidRootPart.CFrame = CFrame.new(pos)
-        HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
-        HumanoidRootPart.RotVelocity = Vector3.new(0, 0, 0)
-    end
-
-    if holdButton then holdButton.Text = "Brainrot: OFF (hold)" end
-    print("Brainrot отключен")
+IS_ACTIVE = false
+-- Вернуть в исходную позицию
+local pos = originalPosition
+if HumanoidRootPart then
+    HumanoidRootPart.CFrame = CFrame.new(pos)
+    HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
+    HumanoidRootPart.RotVelocity = Vector3.new(0, 0, 0)
 end
 
--- Обновление UI текста по состоянию активировано/нет
-local function updateUI()
-    if holdButton then
-        holdButton.Text = IS_ACTIVE and "Brainrot: ON (hold)" or "Brainrot: OFF (hold)"
-    end
+if holdButton then holdButton.Text = "Brainrot: OFF (hold)" end
+print("Brainrot отключен")
 end
 
--- Движение панели UI (draggable)
-local function makePanelDraggable(p)
-    local dragging = false
-    local dragStart = Vector2.new()
-    local panelStart = p.Position
+-- Обновление UI текста по состоянию активировано/нет local function updateUI() if holdButton then holdButton.Text = IS_ACTIVE and "Brainrot: ON (hold)" or "Brainrot: OFF (hold)" end end
 
-    p.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
-            dragStart = Vector2.new(input.Position.X, input.Position.Y)
-            panelStart = p.Position
-        end
-    end)
+-- Движение панели UI (draggable) local function makePanelDraggable(p) local dragging = false local dragStart = Vector2.new() local panelStart = p.Position
 
-    p.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = false
-        end
-    end)
-
-    UserInputService.InputChanged:Connect(function(input)
-        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-            local delta = Vector2.new(input.Position.X - dragStart.X, input.Position.Y - dragStart.Y)
-            p.Position = UDim2.new(
-                panelStart.X.Scale, panelStart.X.Offset + delta.X,
-                panelStart.Y.Scale, panelStart.Y.Offset + delta.Y
-            )
-        end
-    end)
-end
-
--- Создание простого UI (movable panel с кнопкой Hold)
-local function createUI()
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "BrainrotUI"
-    screenGui.Parent = PlayerGui
-    screenGui.ResetOnSpawn = false
-
-    panel = Instance.new("Frame")
-    panel.Name = "BrainrotPanel"
-    panel.Parent = screenGui
-    panel.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-    panel.BackgroundTransparency = 0.15
-    panel.Size = UDim2.new(0, 220, 0, 100)
-    panel.Position = UDim2.new(0.5, -110, 0.5, -50)
-
-    local title = Instance.new("TextLabel")
-    title.Parent = panel
-    title.Size = UDim2.new(1, 0, 0, 20)
-    title.Position = UDim2.new(0, 0, 0, 0)
-    title.BackgroundTransparency = 1
-    title.Text = "Brainrot Controller"
-    title.TextColor3 = Color3.new(1, 1, 1)
-    title.Font = Enum.Font.SourceSansBold
-    title.TextScaled = true
-
-    holdButton = Instance.new("TextButton")
-    holdButton.Name = "HoldButton"
-    holdButton.Parent = panel
-    holdButton.Size = UDim2.new(0, 180, 0, 50)
-    holdButton.Position = UDim2.new(0.5, -90, 0.5, 25)
-    holdButton.AnchorPoint = Vector2.new(0.5, 0)
-    holdButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    holdButton.TextColor3 = Color3.new(1, 1, 1)
-    holdButton.Text = "Brainrot: OFF (hold)"
-    holdButton.Font = Enum.Font.SourceSans
-    holdButton.TextScaled = true
-
-    -- Драг-панель
-    makePanelDraggable(panel)
-
-    screenGui.Parent = PlayerGui
-end
-
--- Обработчики удержания кнопки
-holdButton.MouseButton1Down:Connect(function()
-    -- Активируем режим
-    if not IS_ACTIVE then
-        startRunMode()
-        updateUI()
+p.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = Vector2.new(input.Position.X, input.Position.Y)
+        panelStart = p.Position
     end
 end)
+
+p.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = false
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = Vector2.new(input.Position.X - dragStart.X, input.Position.Y - dragStart.Y)
+        p.Position = UDim2.new(
+            panelStart.X.Scale, panelStart.X.Offset + delta.X,
+            panelStart.Y.Scale, panelStart.Y.Offset + delta.Y
+        )
+    end
+end)
+end
+
+-- Создание простого UI (movable panel с кнопкой Hold) local function createUI() local screenGui = Instance.new("ScreenGui") screenGui.Name = "BrainrotUI" screenGui.Parent = PlayerGui screenGui.ResetOnSpawn = false
+
+panel = Instance.new("Frame")
+panel.Name = "BrainrotPanel"
+panel.Parent = screenGui
+panel.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+panel.BackgroundTransparency = 0.15
+panel.Size = UDim2.new(0, 220, 0, 100)
+panel.Position = UDim2.new(0.5, -110, 0.5, -50)
+
+local title = Instance.new("TextLabel")
+title.Parent = panel
+title.Size = UDim2.new(1, 0, 0, 20)
+title.Position = UDim2.new(0, 0, 0, 0)
+title.BackgroundTransparency = 1
+title.Text = "Brainrot Controller"
+title.TextColor3 = Color3.new(1, 1, 1)
+title.Font = Enum.Font.SourceSansBold
+title.TextScaled = true
+
+holdButton = Instance.new("TextButton")
+holdButton.Name = "HoldButton"
+holdButton.Parent = panel
+holdButton.Size = UDim2.new(0, 180, 0, 50)
+holdButton.Position = UDim2.new(0.5, -90, 0.5, 25)
+holdButton.AnchorPoint = Vector2.new(0.5, 0)
+holdButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+holdButton.TextColor3 = Color3.new(1, 1, 1)
+holdButton.Text = "Brainrot: OFF (hold)"
+holdButton.Font = Enum.Font.SourceSans
+holdButton.TextScaled = true
+
+-- Драг-панель
+makePanelDraggable(panel)
+
+screenGui.Parent = PlayerGui
+end
+
+-- Обработчики удержания кнопки (навешиваем после создания UI) local function connectUIEvents() if holdButton then holdButton.MouseButton1Down:Connect(function() if not IS_ACTIVE then startRunMode() updateUI() end end) end
 
 UserInputService.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -255,40 +172,19 @@ UserInputService.InputEnded:Connect(function(input)
         end
     end
 end)
-
--- Обработчик перезапуска персонажа
-local function onCharacterAdded(newCharacter)
-    Character = newCharacter
-    Humanoid = Character:WaitForChild("Humanoid", 10)
-    HumanoidRootPart = Character:WaitForChild("HumanoidRootPart", 10)
-    originalPosition = HumanoidRootPart.Position
-    hitboxDisabled = false
-    if IS_ACTIVE then
-        -- Если активирован на момент респауна - продолжить держать местоположение
-        startRunMode()
-        updateUI()
-    end
 end
+
+-- Обработчик перезапуска персонажа local function onCharacterAdded(newCharacter) Character = newCharacter Humanoid = Character:WaitForChild("Humanoid", 10) HumanoidRootPart = Character:WaitForChild("HumanoidRootPart", 10) originalPosition = HumanoidRootPart.Position hitboxDisabled = false if IS_ACTIVE then -- Если активирован на момент респауна - продолжить держать местоположение startRunMode() updateUI() end end
 
 -- Настройки на старте
 createUI()
 updateUI()
+connectUIEvents()
 
 -- Поддержка переподключения персонажа
-player.CharacterAdded:Connect(onCharacterAdded)
--- Инициализация начального состояния
-if Character then
-    onCharacterAdded(Character)
+player.CharacterAdded:Connect(onCharacterAdded) -- Инициализация начального состояния
+if Character then onCharacterAdded(Character)
 end
 
--- Не забываем держать оригинальную позицию, чтобы при старте вернуть
-RunService.Heartbeat:Connect(function()
-    if IS_ACTIVE and HumanoidRootPart and HumanoidRootPart.Parent then
-        -- Непрерывно держим персонажа на целевой позиции
-        local look = HumanoidRootPart.CFrame.LookVector
-        targetPosition = originalPosition + (look * 5)
-        HumanoidRootPart.CFrame = CFrame.new(targetPosition)
-        HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
-        HumanoidRootPart.RotVelocity = Vector3.new(0, 0, 0)
-    end
-end)
+-- Не забываем держать оригинальную позицию, чтобы при старте вернуть 
+RunService.Heartbeat:Connect(function() if IS_ACTIVE and HumanoidRootPart and HumanoidRootPart.Parent then -- Непрерывно держим персонажа на целевой позиции local look = HumanoidRootPart.CFrame.LookVector targetPosition = originalPosition + (look * 5) HumanoidRootPart.CFrame = CFrame.new(targetPosition) HumanoidRootPart.Velocity = Vector3.new(0, 0, 0) HumanoidRootPart.RotVelocity = Vector3.new(0, 0, 0) end end)
