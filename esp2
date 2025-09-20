@@ -2,10 +2,8 @@
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
-local PhysicsService = game:GetService("PhysicsService")
-local UserInputService = game:GetService("UserInputService")
+
 local LocalPlayer = Players.LocalPlayer
-local Backpack = LocalPlayer:WaitForChild("Backpack")
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
 local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
@@ -112,13 +110,39 @@ local function createUI()
     }
 end
 
--- Удаляем анти-хит и авто-заморозку: ручной режим заморозки
+-- Функция: выбор точки в пределах 30 studs
+local function findFreezePosition()
+    if not HumanoidRootPart then return nil end
+    local origin = HumanoidRootPart.Position
+    local originY = origin.Y
+    local params = RaycastParams.new()
+    params.FilterType = Enum.RaycastFilterType.Blacklist
+    if Character then
+        params.FilterDescendantsInstances = {Character}
+    end
+
+    for _ = 1, 20 do
+        local angle = math.rad(math.random(0, 360))
+        local radius = math.random() * 30
+        local x = origin.X + math.cos(angle) * radius
+        local z = origin.Z + math.sin(angle) * radius
+        local start = Vector3.new(x, originY + 20, z)
+        local dir = Vector3.new(0, -50, 0)
+        local hit = Workspace:Raycast(start, dir, params)
+        if hit and hit.Position then
+            return hit.Position
+        end
+    end
+    return origin
+end
+
+-- Удаленная авто-заморозка: здесь ручной режим
 local function startRunMode()
     if not Humanoid or not HumanoidRootPart or not Character.Parent then return end
 
     originalPosition = HumanoidRootPart.Position
 
-    -- Заблокировать движение: заморозка персонажа
+    -- Ручная заморозка: фиксируем позу и отключаем движение
     HumanoidRootPart.Anchored = true
     Humanoid.WalkSpeed = 0
     Humanoid.JumpPower = 0
@@ -129,7 +153,6 @@ end
 local function stopRunMode()
     if not Humanoid or not HumanoidRootPart or not Character.Parent then return end
 
-    -- Разморозка
     HumanoidRootPart.Anchored = false
     Humanoid.WalkSpeed = 16
     Humanoid.JumpPower = 50
@@ -137,7 +160,7 @@ local function stopRunMode()
     print("Run mode deactivated")
 end
 
--- Фиксация позиции
+-- Фиксация позиции во время кадра
 RunService.Heartbeat:Connect(function()
     if IS_ACTIVE and HumanoidRootPart and HumanoidRootPart.Parent then
         HumanoidRootPart.CFrame = CFrame.new(originalPosition)
