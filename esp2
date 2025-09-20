@@ -1,73 +1,250 @@
-local frame = Instance.new("Frame", screenGui)
-frame.Size = UDim2.new(0, 240, 0, 80)
-frame.Position = UDim2.new(0, 10, 0, 10)
-frame.BackgroundColor3 = Color3.new(0.1, 0.1, 0.1)
-frame.BackgroundTransparency = 0.2
-frame.BorderSizePixel = 0
+--[[
+LocalScript: Brainrot Anti-Hit + Draggable Menu (без F9)
+Помещайте в StarterPlayerScripts
+--]]
 
-local toggle = Instance.new("TextButton", frame)
-toggle.Size = UDim2.new(0.9, 0, 0.4, 0)
-toggle.Position = UDim2.new(0.05, 0, 0.28, 0)
-toggle.Text = "Camera Smooth: ON"
-toggle.TextScaled = true
-toggle.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
-toggle.TextColor3 = Color3.new(1, 1, 1)
+local Players = game:GetService("Players")
+local PhysicsService = game:GetService("PhysicsService")
+local RunService = game:GetService("RunService")
+local Backpack = Players.LocalPlayer:WaitForChild("Backpack")
+local UserInputService = game:GetService("UserInputService")
 
-local note = Instance.new("TextLabel", frame)
-note.Size = UDim2.new(1, 0, 0.25, 0)
-note.Position = UDim2.new(0, 0, 0.68, 0)
-note.Text = "Note: только визуальная плавность, сервер не affected"
-note.TextScaled = true
-note.BackgroundTransparency = 1
-note.TextColor3 = Color3.new(1, 1, 1)
+local player = Players.LocalPlayer
+local Character = player.Character or player.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid", 10)
+local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart", 10)
 
-return toggle
-end
+local RUN_ANIMATION_ID = 2510235062
+local animTrack = nil
 
-local toggleButton = createMenu()
+local isActive = true
+local antiHitEnabled = false
+local originalCollisionGroups = {}
+local currentGroupName = nil
 
-local function updateTargetCFrame(char) local hrp = char:FindFirstChild("HumanoidRootPart") if not hrp then return end local worldOffset = hrp.CFrame:VectorToWorldSpace(offset) local camPos = hrp.Position + worldOffset targetCFrame = CFrame.new(camPos, hrp.Position) end
-
-local currentCharacter = nil local function onCharacterAdded(char) currentCharacter = char updateTargetCFrame(char) end
-
-local function onCharacterRemoving() currentCharacter = nil targetCFrame = nil end
-
-local function enableSmoothCamera() smoothingEnabled = true end
-
-local function disableSmoothCamera() smoothingEnabled = false end
-
--- Переключатель в меню toggleButton.MouseButton1Click:Connect(function() smoothingEnabled = not smoothingEnabled toggleButton.Text = smoothingEnabled and "Camera Smooth: ON" or "Camera Smooth: OFF" end)
-
--- Обновление цели камеры при смене персонажа player.CharacterAdded:Connect(function(char) onCharacterAdded(char) end)
-
-player.CharacterRemoving:Connect(onCharacterRemoving)
-
--- Основной цикл: плавная интерполяция камеры RunService.RenderStepped:Connect(function(dt) if not smoothingEnabled then return end
-
-if not currentCharacter or not currentCharacter.Parent then
-    local camChar = player.Character
-    if camChar then
-        updateTargetCFrame(camChar)
+local function saveOriginalCollision()
+    originalCollisionGroups = {}
+    for _, part in ipairs(Character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            originalCollisionGroups[part] = part.CollisionGroup
+        end
     end
-    return
 end
 
-if not currentCharacter:FindFirstChild("HumanoidRootPart") then return end
-
-local newCF = targetCFrame
-if not newCF then
-    updateTargetCFrame(currentCharacter)
-    newCF = targetCFrame
-    if not newCF then return end
+local function ensureCollisionGroup(groupName)
+    local ok = pcall(function()
+        PhysicsService:CreateCollisionGroup(groupName)
+    end)
+    -- Игнорируем ошибку, если группа уже существует
+    if not ok then
+        -- Возможно уже существует
+    end
+    -- Не сталкиваемся с врагами, если группа Enemy существует
+    pcall(function()
+        PhysicsService:CollisionGroupSetCollidable(groupName, "Default", true)
+    end)
+    pcall(function()
+        PhysicsService:CollisionGroupSetCollidable(groupName, "Enemy", false)
+    end)
 end
 
--- Небольшая плавность
-if camera.CameraType ~= Enum.CameraType.Scriptable then
-    camera.CameraType = Enum.CameraType.Scriptable
+local function applyAntiHitGroup(groupName)
+    saveOriginalCollision()
+    ensureCollisionGroup(groupName)
+    local gid = PhysicsService:GetCollisionGroupId(groupName)
+    for _, part in ipairs(Character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            -- Применяем группу
+            pcall(function()
+                part.CollisionGroup = groupName
+            end)
+            pcall(function()
+                part.CollisionGroupId = gid
+            end)
+        end
+    end
+    antiHitEnabled = true
 end
-local currentCF = camera.CFrame
-local blended = currentCF:Lerp(newCF, 0.15)
-camera.CFrame = blended
+
+local function restoreOriginalCollision()
+    for part, group in pairs(originalCollisionGroups) do
+        if part and part.Parent then
+            pcall(function()
+                part.CollisionGroup = group
+            end)
+        end
+    end
+    antiHitEnabled = false
+end
+
+local function enableAntiHit()
+    if antiHitEnabled then return end
+    -- Создаем уникальную группу для игрока
+    currentGroupName = "BrainrotAntiHit_" .. tostring(math.random(10000, 99999))
+    applyAntiHitGroup(currentGroupName)
+end
+
+local function disableAntiHit()
+    if not antiHitEnabled then return end
+    pcall(function()
+        restoreOriginalCollision()
+        currentGroupName = nil
+    end)
+end
+
+local function playRunAnimation()
+    if animTrack and animTrack.IsPlaying then animTrack:Stop() end
+    local ok, err = pcall(function()
+        local animation = Instance.new("Animation")
+        animation.AnimationId = "rbxassetid://" .. RUN_ANIMATION_ID
+        animTrack = Humanoid:LoadAnimation(animation)
+        animTrack:Play(0.1)
+        animTrack.Looped = true
+    end)
+    if not ok then
+        warn("Animation error: " .. (err or "Unknown"))
+    end
+end
+
+local function startRunMode()
+    if not Humanoid or not HumanoidRootPart or not Character or not Character.Parent then return end
+    enableAntiHit()
+    Humanoid.WalkSpeed = 16
+    Humanoid.JumpPower = 50
+    playRunAnimation()
+end
+
+local function stopRunMode()
+    if not Humanoid or not HumanoidRootPart or not Character or not Character.Parent then return end
+    disableAntiHit()
+    Humanoid.WalkSpeed = 16
+    Humanoid.JumpPower = 50
+    if animTrack then animTrack:Stop() end
+end
+
+local function createUI()
+    local playerGui = player:WaitForChild("PlayerGui")
+
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "BrainrotUI"
+    ScreenGui.Parent = playerGui
+    ScreenGui.ResetOnSpawn = false
+
+    local Frame = Instance.new("Frame")
+    Frame.Name = "MainFrame"
+    Frame.Size = UDim2.new(0, 230, 0, 120)
+    Frame.Position = UDim2.new(0.5, -115, 0, 20)
+    Frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    Frame.BackgroundTransparency = 0.15
+    Frame.Active = true
+    Frame.Draggable = true
+    Frame.Parent = ScreenGui
+
+    local Title = Instance.new("TextLabel", Frame)
+    Title.Size = UDim2.new(1, 0, 0, 26)
+    Title.Position = UDim2.new(0, 0, 0, 0)
+    Title.BackgroundTransparency = 1
+    Title.Text = "Brainrot Menu"
+    Title.Font = Enum.Font.SourceSansBold
+    Title.TextColor3 = Color3.new(1, 1, 1)
+    Title.TextScaled = true
+    Title.Parent = Frame
+
+    local Label = Instance.new("TextLabel", Frame)
+    Label.Text = "Anti-Hit"
+    Label.Size = UDim2.new(0, 100, 0, 26)
+    Label.Position = UDim2.new(0, 10, 0, 36)
+    Label.BackgroundTransparency = 1
+    Label.TextColor3 = Color3.new(1, 1, 1)
+    Label.TextScaled = true
+    Label.Parent = Frame
+
+    local SwitchFrame = Instance.new("Frame", Frame)
+    SwitchFrame.Name = "Switch"
+    SwitchFrame.Size = UDim2.new(0, 60, 0, 28)
+    SwitchFrame.Position = UDim2.new(1, -70, 0, 38)
+    SwitchFrame.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    SwitchFrame.BorderSizePixel = 0
+    SwitchFrame.Parent = Frame
+
+    local Knob = Instance.new("Frame", SwitchFrame)
+    Knob.Name = "Knob"
+    Knob.Size = UDim2.new(0, 28, 0, 28)
+    Knob.Position = UDim2.new(0, 0, 0, 0)
+    Knob.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+    Knob.BorderSizePixel = 0
+    Knob.Parent = SwitchFrame
+
+    local function updateUI(state)
+        if state then
+            Knob.Position = UDim2.new(0, 32, 0, 0)
+            Knob.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+        else
+            Knob.Position = UDim2.new(0, 0, 0, 0)
+            Knob.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+        end
+    end
+
+    SwitchFrame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            isActive = not isActive
+            updateUI(isActive)
+            if isActive then
+                startRunMode()
+            else
+                stopRunMode()
+            end
+        end
+    end)
+
+    updateUI(isActive)
+end
+
+local function onToolAdded(tool)
+    if not tool or not tool:IsA("Tool") then return end
+    if tostring(tool.Name):lower():find("brainrot") then
+        task.wait(0.5)
+        if isActive then
+            startRunMode()
+        end
+    end
+end
+
+local function onToolRemoved(tool)
+    if not tool or not tool:IsA("Tool") then return end
+    if tostring(tool.Name):lower():find("brainrot") then
+        stopRunMode()
+    end
+end
+
+player.CharacterAdded:Connect(function(newCharacter)
+    Character = newCharacter
+    task.wait(1)
+    Humanoid = Character:WaitForChild("Humanoid", 10)
+    HumanoidRootPart = Character:WaitForChild("HumanoidRootPart", 10)
+
+    antiHitEnabled = false
+    if isActive then
+        local tool = Backpack:FindFirstChildOfClass("Tool")
+        if tool and tostring(tool.Name):lower():find("brainrot") then
+            task.wait(2)
+            startRunMode()
+        end
+    end
 end)
 
-print("Brainrot: готово. Локальная плавная камера активна. Управление через меню в UI.")
+spawn(createUI)
+
+Backpack.ChildAdded:Connect(onToolAdded)
+Backpack.ChildRemoved:Connect(onToolRemoved)
+
+if isActive then
+    task.wait(1)
+    local tool = Backpack:FindFirstChildOfClass("Tool")
+    if tool and tostring(tool.Name):lower():find("brainrot") then
+        task.wait(2)
+        startRunMode()
+    end
+end
+
+-- End of Script
