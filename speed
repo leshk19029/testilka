@@ -1,23 +1,22 @@
-return function()
 local SpeedBoostModule = {}
 SpeedBoostModule.Enabled = false
 SpeedBoostModule.CurrentSpeed = 16
 SpeedBoostModule.VelocityConnection = nil
+SpeedBoostModule.Player = game:GetService("Players").LocalPlayer
 
 function SpeedBoostModule:Enable()
-    local Players = game:GetService('Players')
     local RunService = game:GetService('RunService')
     
-    local player = Players.LocalPlayer
-    local character = player.Character
+    local character = self.Player.Character
     if not character then return end
     
     self:Disable()
 
     self.VelocityConnection = RunService.Heartbeat:Connect(function()
-        if not self.Enabled or not character or not character.Parent then
-            return
-        end
+        if not self.Enabled then return end
+        
+        character = self.Player.Character
+        if not character or not character.Parent then return end
         
         local humanoid = character:FindFirstChild('Humanoid')
         local rootPart = character:FindFirstChild('HumanoidRootPart')
@@ -50,5 +49,16 @@ function SpeedBoostModule:SetEnabled(state)
     end
 end
 
+-- Обработка смены персонажа
+SpeedBoostModule.Player.CharacterAdded:Connect(function()
+    if SpeedBoostModule.Enabled then
+        SpeedBoostModule:Disable()
+        SpeedBoostModule:Enable()
+    end
+end)
+
+SpeedBoostModule.Player.CharacterRemoving:Connect(function()
+    SpeedBoostModule:Disable()
+end)
+
 return SpeedBoostModule
-end
