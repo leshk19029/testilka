@@ -7,17 +7,32 @@ local Workspace = game:GetService("Workspace")
 -- Настройки
 local FALL_GRAVITY = 3
 local NORMAL_GRAVITY = Workspace.Gravity
+local FLY_SPEED = 30
+local FALL_SPEED = 5
+local MAX_HEIGHT_GAIN = 21.8
 local scriptActive = true
 local gravityEnabled = false
+local flightEnabled = false
+local heightLimitEnabled = false
+
+-- Переменные для полета
+local isFlying = false
+local initialYPosition = 0
+local currentHeightGain = 0
+
+-- Переменные для гравитации
+local isFalling = false
+local wasOnGround = false
 
 -- Создаем интерфейс
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "FallGravityControl"
+screenGui.Name = "GravityFlightControl"
 screenGui.Parent = CoreGui
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 150, 0, 80)
-frame.Position = UDim2.new(0.8, 0, 0.2, 0)
+frame.Size = UDim2.new(0, 300, 0, 250)
+frame.Position = UDim2.new(0.5, -150, 0.2, 0)
+frame.AnchorPoint = Vector2.new(0.5, 0)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 frame.BackgroundTransparency = 0.3
 frame.BorderSizePixel = 0
@@ -28,68 +43,193 @@ local uiCorner = Instance.new("UICorner")
 uiCorner.CornerRadius = UDim.new(0, 8)
 uiCorner.Parent = frame
 
--- Заголовок
-local titleText = Instance.new("TextLabel")
-titleText.Size = UDim2.new(1, 0, 0, 20)
-titleText.Position = UDim2.new(0, 0, 0, 5)
-titleText.BackgroundTransparency = 1
-titleText.Text = "FALL GRAVITY"
-titleText.TextColor3 = Color3.fromRGB(200, 200, 200)
-titleText.Font = Enum.Font.GothamBold
-titleText.TextSize = 16
-titleText.TextXAlignment = Enum.TextXAlignment.Center
+local title = Instance.new("TextLabel")
+title.Text = "GRAVITY & FLIGHT CONTROL"
+title.Size = UDim2.new(1, 0, 0, 30)
+title.Position = UDim2.new(0, 0, 0, 5)
+title.BackgroundTransparency = 1
+title.TextColor3 = Color3.fromRGB(200, 200, 200)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 16
+title.TextXAlignment = Enum.TextXAlignment.Center
 
--- Переключатель гравитации
+-- Переключатель гравитации при падении
+local gravityToggleLabel = Instance.new("TextLabel")
+gravityToggleLabel.Text = "Fall Gravity (G=3):"
+gravityToggleLabel.Size = UDim2.new(0.7, 0, 0, 25)
+gravityToggleLabel.Position = UDim2.new(0.05, 0, 0.15, 0)
+gravityToggleLabel.BackgroundTransparency = 1
+gravityToggleLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+gravityToggleLabel.Font = Enum.Font.Gotham
+gravityToggleLabel.TextSize = 14
+gravityToggleLabel.TextXAlignment = Enum.TextXAlignment.Left
+
 local gravityToggle = Instance.new("TextButton")
 gravityToggle.Size = UDim2.new(0, 50, 0, 25)
-gravityToggle.Position = UDim2.new(0.05, 0, 0.4, 0)
+gravityToggle.Position = UDim2.new(0.7, 0, 0.15, 0)
 gravityToggle.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
 gravityToggle.Text = "OFF"
 gravityToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
 gravityToggle.Font = Enum.Font.GothamBold
 gravityToggle.TextSize = 14
 
--- Текст статуса
-local statusText = Instance.new("TextLabel")
-statusText.Size = UDim2.new(1, 0, 0, 20)
-statusText.Position = UDim2.new(0, 0, 0.75, 0)
-statusText.BackgroundTransparency = 1
-statusText.Text = "Standing"
-statusText.TextColor3 = Color3.fromRGB(200, 200, 200)
-statusText.Font = Enum.Font.Gotham
-statusText.TextSize = 12
-statusText.TextXAlignment = Enum.TextXAlignment.Center
+-- Переключатель функции полета
+local flightToggleLabel = Instance.new("TextLabel")
+flightToggleLabel.Text = "Flight Function:"
+flightToggleLabel.Size = UDim2.new(0.7, 0, 0, 25)
+flightToggleLabel.Position = UDim2.new(0.05, 0, 0.3, 0)
+flightToggleLabel.BackgroundTransparency = 1
+flightToggleLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+flightToggleLabel.Font = Enum.Font.Gotham
+flightToggleLabel.TextSize = 14
+flightToggleLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+local flightToggle = Instance.new("TextButton")
+flightToggle.Size = UDim2.new(0, 50, 0, 25)
+flightToggle.Position = UDim2.new(0.7, 0, 0.3, 0)
+flightToggle.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+flightToggle.Text = "OFF"
+flightToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+flightToggle.Font = Enum.Font.GothamBold
+flightToggle.TextSize = 14
+
+-- Ограничение высоты
+local toggleLabel = Instance.new("TextLabel")
+toggleLabel.Text = "Height Limit:"
+toggleLabel.Size = UDim2.new(0.7, 0, 0, 25)
+toggleLabel.Position = UDim2.new(0.05, 0, 0.45, 0)
+toggleLabel.BackgroundTransparency = 1
+toggleLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+toggleLabel.Font = Enum.Font.Gotham
+toggleLabel.TextSize = 14
+toggleLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+local toggle = Instance.new("TextButton")
+toggle.Size = UDim2.new(0, 50, 0, 25)
+toggle.Position = UDim2.new(0.7, 0, 0.45, 0)
+toggle.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+toggle.Text = "OFF"
+toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggle.Font = Enum.Font.GothamBold
+toggle.TextSize = 14
+
+-- Информация
+local heightLabel = Instance.new("TextLabel")
+heightLabel.Text = "Current Height: 0"
+heightLabel.Size = UDim2.new(0.9, 0, 0, 25)
+heightLabel.Position = UDim2.new(0.05, 0, 0.6, 0)
+heightLabel.BackgroundTransparency = 1
+heightLabel.TextColor3 = Color3.fromRGB(0, 200, 255)
+heightLabel.Font = Enum.Font.Gotham
+heightLabel.TextSize = 14
+heightLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Text = "Status: Standing"
+statusLabel.Size = UDim2.new(0.9, 0, 0, 25)
+statusLabel.Position = UDim2.new(0.05, 0, 0.7, 0)
+statusLabel.BackgroundTransparency = 1
+statusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+statusLabel.Font = Enum.Font.Gotham
+statusLabel.TextSize = 14
+statusLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+local maxHeightLabel = Instance.new("TextLabel")
+maxHeightLabel.Text = "Max Height: "..MAX_HEIGHT_GAIN
+maxHeightLabel.Size = UDim2.new(0.9, 0, 0, 25)
+maxHeightLabel.Position = UDim2.new(0.05, 0, 0.8, 0)
+maxHeightLabel.BackgroundTransparency = 1
+maxHeightLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+maxHeightLabel.Font = Enum.Font.Gotham
+maxHeightLabel.TextSize = 14
+maxHeightLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+local closeLabel = Instance.new("TextLabel")
+closeLabel.Text = "F2 - Disable Script | SPACE - Fly"
+closeLabel.Size = UDim2.new(0.9, 0, 0, 20)
+closeLabel.Position = UDim2.new(0.05, 0, 0.9, 0)
+closeLabel.BackgroundTransparency = 1
+closeLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+closeLabel.Font = Enum.Font.Gotham
+closeLabel.TextSize = 12
+closeLabel.TextXAlignment = Enum.TextXAlignment.Left
 
 -- Иерархия объектов
-titleText.Parent = frame
+title.Parent = frame
+gravityToggleLabel.Parent = frame
 gravityToggle.Parent = frame
-statusText.Parent = frame
+flightToggleLabel.Parent = frame
+flightToggle.Parent = frame
+toggleLabel.Parent = frame
+toggle.Parent = frame
+heightLabel.Parent = frame
+statusLabel.Parent = frame
+maxHeightLabel.Parent = frame
+closeLabel.Parent = frame
 uiCorner.Parent = frame
 frame.Parent = screenGui
 
--- Переменные для отслеживания состояния
-local isFalling = false
-local wasOnGround = false
-
--- Функция включения/выключения системы
-local function toggleGravitySystem()
-    gravityEnabled = not gravityEnabled
-    
-    if gravityEnabled then
-        gravityToggle.Text = "ON"
-        gravityToggle.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-        statusText.Text = "Active"
-    else
-        gravityToggle.Text = "OFF"
-        gravityToggle.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-        statusText.Text = "Disabled"
-        -- Восстанавливаем нормальную гравитацию при выключении
-        Workspace.Gravity = NORMAL_GRAVITY
+-- Функция сброса скорости
+local function resetVelocity()
+    if Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
+        Player.Character.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
     end
 end
 
--- Обработчик клика по переключателю
-gravityToggle.MouseButton1Click:Connect(toggleGravitySystem)
+-- Функция для полного выключения скрипта
+local function disableScript()
+    scriptActive = false
+    resetVelocity()
+    Workspace.Gravity = NORMAL_GRAVITY
+    screenGui:Destroy()
+end
+
+-- Обработчик F2
+UIS.InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.F2 then
+        disableScript()
+    end
+end)
+
+-- Переключатель гравитации
+gravityToggle.MouseButton1Click:Connect(function()
+    gravityEnabled = not gravityEnabled
+    if gravityEnabled then
+        gravityToggle.Text = "ON"
+        gravityToggle.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+    else
+        gravityToggle.Text = "OFF"
+        gravityToggle.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+        Workspace.Gravity = NORMAL_GRAVITY
+        statusLabel.Text = "Status: Standing"
+    end
+end)
+
+-- Переключатель функции полета
+flightToggle.MouseButton1Click:Connect(function()
+    flightEnabled = not flightEnabled
+    if flightEnabled then
+        flightToggle.Text = "ON"
+        flightToggle.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+    else
+        flightToggle.Text = "OFF"
+        flightToggle.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+        resetVelocity()
+        isFlying = false
+    end
+end)
+
+-- Переключатель ограничения высоты
+toggle.MouseButton1Click:Connect(function()
+    heightLimitEnabled = not heightLimitEnabled
+    if heightLimitEnabled then
+        toggle.Text = "ON"
+        toggle.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+    else
+        toggle.Text = "OFF"
+        toggle.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    end
+end)
 
 -- Функция проверки состояния падения
 local function checkFallingState()
@@ -108,15 +248,15 @@ local function checkFallingState()
             if not isFalling then
                 isFalling = true
                 Workspace.Gravity = FALL_GRAVITY
-                statusText.Text = "Falling (G: " .. FALL_GRAVITY .. ")"
+                statusLabel.Text = "Status: Falling (G: " .. FALL_GRAVITY .. ")"
             end
         else
             if isFalling then
                 isFalling = false
                 Workspace.Gravity = NORMAL_GRAVITY
-                statusText.Text = "Standing (G: " .. NORMAL_GRAVITY .. ")"
+                statusLabel.Text = "Status: Standing"
             else
-                statusText.Text = isOnGround and "Standing" or "Jumping"
+                statusLabel.Text = "Status: " .. (isOnGround and "Standing" or "Jumping")
             end
         end
         
@@ -124,18 +264,70 @@ local function checkFallingState()
     end
 end
 
--- Обработчик F2 для выключения скрипта
+-- Основная функция полёта
+local function fly()
+    if not scriptActive or not flightEnabled then 
+        return 
+    end
+    
+    if not Player.Character then return end
+    
+    local root = Player.Character:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    
+    -- Обновляем отображение высоты
+    local currentY = math.floor(root.Position.Y * 10) / 10
+    heightLabel.Text = "Current Height: "..tostring(currentY)
+    
+    if isFlying then
+        if heightLimitEnabled then
+            -- Проверяем максимальную высоту
+            if currentHeightGain < MAX_HEIGHT_GAIN then
+                local remainingGain = MAX_HEIGHT_GAIN - currentHeightGain
+                local actualSpeed = math.min(FLY_SPEED, remainingGain * 10)
+                root.Velocity = Vector3.new(root.Velocity.X, actualSpeed, root.Velocity.Z)
+                currentHeightGain = currentHeightGain + (actualSpeed * RunService.Heartbeat:Wait())
+            else
+                root.Velocity = Vector3.new(root.Velocity.X, 0, root.Velocity.Z)
+            end
+        else
+            -- Без ограничения высоты
+            root.Velocity = Vector3.new(root.Velocity.X, FLY_SPEED, root.Velocity.Z)
+        end
+    else
+        -- Медленно падаем вниз
+        root.Velocity = Vector3.new(root.Velocity.X, -FALL_SPEED, root.Velocity.Z)
+        currentHeightGain = 0
+    end
+end
+
+-- Обработка нажатия пробела
 UIS.InputBegan:Connect(function(input)
-    if input.KeyCode == Enum.KeyCode.F2 then
-        scriptActive = false
-        -- Восстанавливаем оригинальную гравитацию перед выходом
-        Workspace.Gravity = NORMAL_GRAVITY
-        screenGui:Destroy()
-        print("Скрипт выключен, гравитация восстановлена")
+    if not scriptActive or not flightEnabled then return end
+    if input.KeyCode == Enum.KeyCode.Space then
+        isFlying = true
+        if heightLimitEnabled then
+            initialYPosition = Player.Character.HumanoidRootPart.Position.Y
+            currentHeightGain = 0
+        end
     end
 end)
 
--- Основной цикл проверки состояния
-RunService.Heartbeat:Connect(checkFallingState)
+-- Обработка отпускания пробела
+UIS.InputEnded:Connect(function(input)
+    if not scriptActive or not flightEnabled then return end
+    if input.KeyCode == Enum.KeyCode.Space then
+        isFlying = false
+    end
+end)
 
-print("Fall Gravity контроллер загружен. Нажмите F2 для выключения.")
+-- Главный цикл
+RunService.Heartbeat:Connect(function()
+    -- Проверяем состояние падения
+    checkFallingState()
+    
+    -- Выполняем полет если включен
+    if flightEnabled then
+        fly()
+    end
+end)
