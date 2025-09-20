@@ -1,175 +1,188 @@
 -- =========================================================
--- Phantom Clone: Real Position Hider
+-- Ultimate Fake Position: Client-Only Decoy
 -- =========================================================
 
 local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
+
 local player = Players.LocalPlayer
+local Character = player.Character or player.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
 
 -- Настройки
 local IS_ACTIVE = false
-local SHOW_MENU = false
-local REAL_POSITION = Vector3.new(0, 0, 0)
-local FAKE_POSITION = Vector3.new(0, 0, 0)
-local CLONE_TRANSPARENCY = 0.7
+local DECOY_DURATION = 8 -- секунд
+local decoy = nil
+local originalPosition = Vector3.new()
+local originalTransparency = {}
 
--- Ссылки на объекты
-local Character = player.Character or player.CharacterAdded:Wait()
-local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
-local fakeClone = nil
-
--- Создание интерфейса
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "PhantomMenu"
-screenGui.Parent = player.PlayerGui
-screenGui.Enabled = SHOW_MENU
-
-local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 300, 0, 200)
-frame.Position = UDim2.new(0.5, -150, 0.5, -100)
-frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-frame.BorderSizePixel = 0
-frame.Parent = screenGui
-
-local title = Instance.new("TextLabel")
-title.Text = "Phantom Clone Settings"
-title.Size = UDim2.new(1, 0, 0, 30)
-title.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-title.TextColor3 = Color3.new(1, 1, 1)
-title.Parent = frame
-
-local toggleBtn = Instance.new("TextButton")
-toggleBtn.Text = "START"
-toggleBtn.Size = UDim2.new(0.8, 0, 0, 40)
-toggleBtn.Position = UDim2.new(0.1, 0, 0.2, 0)
-toggleBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-toggleBtn.TextColor3 = Color3.new(1, 1, 1)
-toggleBtn.Parent = frame
-
-local menuBtn = Instance.new("TextButton")
-menuBtn.Text = "HIDE MENU"
-menuBtn.Size = UDim2.new(0.8, 0, 0, 40)
-menuBtn.Position = UDim2.new(0.1, 0, 0.5, 0)
-menuBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-menuBtn.TextColor3 = Color3.new(1, 1, 1)
-menuBtn.Parent = frame
-
--- Функция создания фантомного клона
-local function createFakeClone()
-    if fakeClone then fakeClone:Destroy() end
+-- Создаем реалистичную фейковую копию
+local function createRealisticDecoy()
+    if decoy then decoy:Destroy() end
     
-    fakeClone = Character:Clone()
+    -- Сохраняем текущую позицию
+    originalPosition = HumanoidRootPart.Position
     
-    -- Делаем клон полупрозрачным и нематериальным
-    for _, part in ipairs(fakeClone:GetDescendants()) do
+    -- Создаем модель-копию
+    decoy = Instance.new("Model")
+    decoy.Name = "FakeDecoy_" .. player.Name
+    
+    -- Копируем все части персонажа
+    for _, child in ipairs(Character:GetChildren()) do
+        if child:IsA("BasePart") or child:IsA("MeshPart") then
+            local clone = child:Clone()
+            clone:ClearAllChildren() -- Убираем дочерние объекты
+            
+            -- Делаем части полупрозрачными и невидимыми для лучей
+            clone.CanCollide = false
+            clone.CanTouch = false
+            clone.CanQuery = false
+            clone.Transparency = 0.6
+            clone.Color = Color3.fromRGB(255, 150, 50)
+            clone.Material = Enum.Material.Neon
+            
+            -- Сохраняем оригинальную прозрачность
+            originalTransparency[clone] = child.Transparency
+            
+            clone.Parent = decoy
+        elseif child:IsA("Accessory") then
+            -- Копируем аксессуары
+            local accessory = child:Clone()
+            if accessory:FindFirstChildWhichIsA("BasePart") then
+                local handle = accessory:FindFirstChildWhichIsA("BasePart")
+                handle.CanCollide = false
+                handle.CanTouch = false
+                handle.CanQuery = false
+                handle.Transparency = 0.6
+                handle.Color = Color3.fromRGB(255, 150, 50)
+            end
+            accessory.Parent = decoy
+        end
+    end
+    
+    -- Позиционируем декой
+    decoy:SetPrimaryPartCFrame(HumanoidRootPart.CFrame)
+    decoy.Parent = Workspace
+    
+    -- Добавляем свечение и эффекты
+    local glow = Instance.new("PointLight")
+    glow.Brightness = 3
+    glow.Range = 8
+    glow.Color = Color3.fromRGB(255, 100, 0)
+    glow.Parent = decoy.PrimaryPart
+    
+    -- Эффект исчезновения через время
+    local disappearTween = TweenService:Create(decoy.PrimaryPart, TweenInfo.new(DECOY_DURATION - 1, Enum.EasingStyle.Quad), {
+        Transparency = 1,
+        Size = Vector3.new(0.1, 0.1, 0.1)
+    })
+    
+    disappearTween:Play()
+    
+    return decoy
+end
+
+-- Делаем реального персонажа "призраком"
+local function makeCharacterGhost()
+    for _, part in ipairs(Character:GetDescendants()) do
         if part:IsA("BasePart") then
-            part.CanCollide = false
-            part.CanTouch = false
-            part.CanQuery = false
-            part.Transparency = CLONE_TRANSPARENCY
-            part.Anchored = true
-        elseif part:IsA("Decal") then
-            part.Transparency = CLONE_TRANSPARENCY
+            part.LocalTransparencyModifier = 0.7 -- Видим себя полупрозрачным
         end
     end
-    
-    -- Удаляем ненужные скрипты и контроллеры
-    for _, child in ipairs(fakeClone:GetDescendants()) do
-        if child:IsA("Script") or child:IsA("LocalScript") then
-            child:Destroy()
+end
+
+-- Возвращаем нормальную видимость
+local function restoreCharacterVisibility()
+    for _, part in ipairs(Character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.LocalTransparencyModifier = 0
         end
     end
-    
-    fakeClone.Parent = workspace
-    fakeClone.Name = "PhantomClone_" .. player.Name
-    
-    return fakeClone
 end
 
--- Основная функция обновления позиций
-local function updatePositions()
-    if not IS_ACTIVE or not HumanoidRootPart or not fakeClone then return end
+-- Запуск режима фейковой позиции
+local function startFakePosition()
+    if IS_ACTIVE or not Character or not HumanoidRootPart then return end
+    IS_ACTIVE = true
     
-    -- Обновляем реальную позицию (где вы на самом деле)
-    REAL_POSITION = HumanoidRootPart.Position
+    -- Создаем фейковую копию
+    createRealisticDecoy()
     
-    -- Позиционируем клон на фейковой позиции
-    local fakeHRP = fakeClone:FindFirstChild("HumanoidRootPart")
-    if fakeHRP then
-        fakeHRP.CFrame = CFrame.new(FAKE_POSITION)
-    end
-end
-
--- Запуск/остановка системы
-local function toggleSystem()
-    IS_ACTIVE = not IS_ACTIVE
+    -- Делаем себя полупрозрачным
+    makeCharacterGhost()
     
-    if IS_ACTIVE then
-        -- Запоминаем текущую позицию как фейковую
-        FAKE_POSITION = HumanoidRootPart.Position
-        REAL_POSITION = FAKE_POSITION
-        
-        -- Создаем клона
-        createFakeClone()
-        toggleBtn.Text = "STOP"
-        toggleBtn.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
-        
-        print("🔄 Phantom Clone активирован!")
-        print("📍 Фейковая позиция: " .. tostring(FAKE_POSITION))
-        
-    else
-        -- Удаляем клона
-        if fakeClone then
-            fakeClone:Destroy()
-            fakeClone = nil
+    print("🎭 Фейковая позиция активирована! Длительность: " .. DECOY_DURATION .. "сек")
+    
+    -- Автоматическое отключение
+    task.delay(DECOY_DURATION, function()
+        if IS_ACTIVE then
+            stopFakePosition()
         end
-        
-        toggleBtn.Text = "START"
-        toggleBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-        
-        print("🔄 Phantom Clone деактивирован")
+    end)
+end
+
+-- Остановка режима
+local function stopFakePosition()
+    if not IS_ACTIVE then return end
+    IS_ACTIVE = false
+    
+    -- Удаляем декой
+    if decoy then
+        decoy:Destroy()
+        decoy = nil
     end
+    
+    -- Возвращаем видимость
+    restoreCharacterVisibility()
+    
+    print("🎭 Фейковая позиция деактивирована")
 end
 
--- Переключение меню
-local function toggleMenu()
-    SHOW_MENU = not SHOW_MENU
-    screenGui.Enabled = SHOW_MENU
-    menuBtn.Text = SHOW_MENU and "HIDE MENU" or "SHOW MENU"
-end
-
--- Обработчики кнопок
-toggleBtn.MouseButton1Click:Connect(toggleSystem)
-menuBtn.MouseButton1Click:Connect(toggleMenu)
-
--- Горячие клавиши
-UserInputService.InputBegan:Connect(function(input)
-    if input.KeyCode == Enum.KeyCode.F9 then
-        toggleSystem()
-    elseif input.KeyCode == Enum.KeyCode.F10 then
-        toggleMenu()
+-- Обработчик ввода
+UserInputService.InputBegan:Connect(function(input, processed)
+    if processed then return end
+    
+    if input.KeyCode == Enum.KeyCode.V then
+        if IS_ACTIVE then
+            stopFakePosition()
+        else
+            startFakePosition()
+        end
     end
 end)
 
--- Основной цикл обновления
-RunService.Heartbeat:Connect(updatePositions)
+-- Автоочистка при выходе или смерти
+player.CharacterRemoving:Connect(function()
+    stopFakePosition()
+end)
 
--- Обработчик респауна
-player.CharacterAdded:Connect(function(newCharacter)
-    Character = newCharacter
-    HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
-    
-    -- Если система была активна, пересоздаем клона
-    if IS_ACTIVE then
-        task.wait(2)
-        createFakeClone()
-        FAKE_POSITION = HumanoidRootPart.Position
+Character:GetPropertyChangedSignal("Parent"):Connect(function()
+    if Character.Parent == nil then
+        stopFakePosition()
     end
 end)
 
-print("👻 Phantom Clone Script загружен!")
-print("🎮 F9 - Вкл/Выкл систему")
-print("🎮 F10 - Показать/скрыть меню")
-print("📍 Вы остаетесь на реальной позиции, другие видят клона на фейковой")
+-- Обновление позиции декоя (если нужно оставаться на месте)
+RunService.Heartbeat:Connect(function()
+    if IS_ACTIVE and decoy and decoy.PrimaryPart then
+        -- Можно добавить небольшую анимацию или пульсацию
+        decoy.PrimaryPart.CFrame = CFrame.new(originalPosition) * CFrame.Angles(0, math.sin(tick() * 2) * 0.1, 0)
+    end
+end)
+
+print("🎭 Ultimate Fake Position загружен!")
+print("🔑 V - Создать фейковую позицию на " .. DECOY_DURATION .. " секунд")
+print("👻 Другие увидят вашу копию на старом месте")
+print("⚡ Вы сможете свободно перемещаться как 'призрак'")
+print("💡 Работает полностью на клиенте!")
+
+-- Визуальные подсказки
+game:GetService("StarterGui"):SetCore("SendNotification", {
+    Title = "Fake Position Loaded",
+    Text = "Press V to create decoy for " .. DECOY_DURATION .. " seconds",
+    Duration = 5
+})
