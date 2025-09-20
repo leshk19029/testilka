@@ -2,19 +2,20 @@ local Player = game:GetService("Players").LocalPlayer
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
+local TweenService = game:GetService("TweenService")
 
--- Настройки
-local FLY_SPEED = 30 -- Скорость подъёма
-local FALL_SPEED = 2 -- Очень медленная скорость падения
-local WALK_SPEED = 16 -- Скорость движения вперед/назад
-local MAX_HEIGHT_GAIN = 21.8 -- Максимальный подъём за одно нажатие
+-- Settings
+local FLY_SPEED = 30
+local FALL_SPEED = 2
+local WALK_SPEED = 16
+local MAX_HEIGHT_GAIN = 21.8
 local isFlying = false
 local heightLimitEnabled = false
 local currentHeightGain = 0
 local scriptActive = true
 local flightEnabled = false
 
--- Создаем интерфейс
+-- Create interface
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "FlightControl"
 screenGui.Parent = CoreGui
@@ -33,22 +34,22 @@ local uiCorner = Instance.new("UICorner")
 uiCorner.CornerRadius = UDim.new(0, 8)
 uiCorner.Parent = frame
 
--- Переключатель функции полета
+-- Flight toggle
 local flightToggle = Instance.new("TextButton")
 flightToggle.Size = UDim2.new(0, 80, 0, 30)
 flightToggle.Position = UDim2.new(0.1, 0, 0.1, 0)
 flightToggle.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-flightToggle.Text = "Полёт: OFF"
+flightToggle.Text = "Flight: OFF"
 flightToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
 flightToggle.Font = Enum.Font.GothamBold
 flightToggle.TextSize = 12
 
--- Ограничение высоты
+-- Height limit toggle
 local toggle = Instance.new("TextButton")
 toggle.Size = UDim2.new(0, 80, 0, 30)
 toggle.Position = UDim2.new(0.1, 0, 0.5, 0)
 toggle.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-toggle.Text = "Лимит: OFF"
+toggle.Text = "Limit: OFF"
 toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
 toggle.Font = Enum.Font.GothamBold
 toggle.TextSize = 12
@@ -58,53 +59,89 @@ flightToggle.Parent = frame
 toggle.Parent = frame
 uiCorner.Parent = frame
 
--- Функция сброса скорости
+-- Mobile drag functionality
+local dragInput, dragStart, startPos
+local dragSpeed = 0.25
+
+local function updateInput(input)
+    local delta = input.Position - dragStart
+    local position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    
+    local tween = TweenService:Create(frame, TweenInfo.new(dragSpeed), {Position = position})
+    tween:Play()
+end
+
+frame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragStart = input.Position
+        startPos = frame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragInput = nil
+            end
+        end)
+    end
+end)
+
+frame.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+UIS.InputChanged:Connect(function(input)
+    if input == dragInput then
+        updateInput(input)
+    end
+end)
+
+-- Reset velocity function
 local function resetVelocity()
     if Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
         Player.Character.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
     end
 end
 
--- Функция для полного выключения скрипта
+-- Disable script function
 local function disableScript()
     scriptActive = false
     resetVelocity()
     screenGui:Destroy()
 end
 
--- Обработчик F2
+-- F2 handler
 UIS.InputBegan:Connect(function(input)
     if input.KeyCode == Enum.KeyCode.F2 then
         disableScript()
     end
 end)
 
--- Переключатель функции полета
+-- Flight toggle
 flightToggle.MouseButton1Click:Connect(function()
     flightEnabled = not flightEnabled
     if flightEnabled then
-        flightToggle.Text = "Полёт: ON"
+        flightToggle.Text = "Flight: ON"
         flightToggle.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
     else
-        flightToggle.Text = "Полёт: OFF"
+        flightToggle.Text = "Flight: OFF"
         flightToggle.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
         resetVelocity()
     end
 end)
 
--- Переключатель ограничения высоты
+-- Height limit toggle
 toggle.MouseButton1Click:Connect(function()
     heightLimitEnabled = not heightLimitEnabled
     if heightLimitEnabled then
-        toggle.Text = "Лимит: ON"
+        toggle.Text = "Limit: ON"
         toggle.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
     else
-        toggle.Text = "Лимит: OFF"
+        toggle.Text = "Limit: OFF"
         toggle.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
     end
 end)
 
--- Функция для получения вектора движения
+-- Movement vector function
 local function getMovementVector()
     local moveVector = Vector3.new(0, 0, 0)
     
@@ -124,7 +161,7 @@ local function getMovementVector()
     return moveVector.Unit * WALK_SPEED
 end
 
--- Основная функция полёта
+-- Main flight function
 local function fly()
     if not scriptActive or not flightEnabled then 
         return 
@@ -140,7 +177,6 @@ local function fly()
     local lookVector = camera.CFrame.LookVector
     local rightVector = camera.CFrame.RightVector
     
-    -- Преобразуем движение относительно камеры
     local relativeMovement = Vector3.new(
         movement.X * rightVector.X + movement.Z * lookVector.X,
         0,
@@ -161,13 +197,12 @@ local function fly()
             root.Velocity = Vector3.new(relativeMovement.X, FLY_SPEED, relativeMovement.Z)
         end
     else
-        -- Очень медленное опускание с сохранением горизонтальной скорости
         root.Velocity = Vector3.new(relativeMovement.X, -FALL_SPEED, relativeMovement.Z)
         currentHeightGain = 0
     end
 end
 
--- Обработка нажатия пробела
+-- Space press handler
 UIS.InputBegan:Connect(function(input)
     if not scriptActive or not flightEnabled then return end
     if input.KeyCode == Enum.KeyCode.Space then
@@ -175,7 +210,7 @@ UIS.InputBegan:Connect(function(input)
     end
 end)
 
--- Обработка отпускания пробела
+-- Space release handler
 UIS.InputEnded:Connect(function(input)
     if not scriptActive or not flightEnabled then return end
     if input.KeyCode == Enum.KeyCode.Space then
@@ -183,7 +218,7 @@ UIS.InputEnded:Connect(function(input)
     end
 end)
 
--- Главный цикл
+-- Main loop
 RunService.Heartbeat:Connect(function()
     if flightEnabled then
         fly()
