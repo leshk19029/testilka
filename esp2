@@ -1,7 +1,5 @@
---[[
-LocalScript: Brainrot Anti-Hit + Draggable Menu (без F9)
-Помещайте в StarterPlayerScripts
---]]
+-- LocalScript: Brainrot Anti-Hit + Draggable Menu (без обхода местоположения)
+-- Помещайте в StarterPlayerScripts
 
 local Players = game:GetService("Players")
 local PhysicsService = game:GetService("PhysicsService")
@@ -19,9 +17,10 @@ local animTrack = nil
 
 local isActive = true
 local antiHitEnabled = false
-local originalCollisionGroups = {}
 local currentGroupName = nil
+local originalCollisionGroups = {}
 
+-- Сохраняем оригинальные группы столкновений
 local function saveOriginalCollision()
     originalCollisionGroups = {}
     for _, part in ipairs(Character:GetDescendants()) do
@@ -31,20 +30,21 @@ local function saveOriginalCollision()
     end
 end
 
+-- Создание и настройкаCollisionGroup для anti-hit
 local function ensureCollisionGroup(groupName)
-    local ok = pcall(function()
-        PhysicsService:CreateCollisionGroup(groupName)
-    end)
-    -- Игнорируем ошибку, если группа уже существует
-    if not ok then
-        -- Возможно уже существует
-    end
-    -- Не сталкиваемся с врагами, если группа Enemy существует
+    local physics = PhysicsService
     pcall(function()
-        PhysicsService:CollisionGroupSetCollidable(groupName, "Default", true)
+        physics:CreateCollisionGroup(groupName)
     end)
+    -- Мир (Default) — сталкивается
     pcall(function()
-        PhysicsService:CollisionGroupSetCollidable(groupName, "Enemy", false)
+        physics:CollisionGroupSetCollidable(groupName, "Default", true)
+    end)
+    -- Враги (Enemy) — не сталкивается
+    pcall(function()
+        if physics:CollisionGroupGetCollidable(groupName, "Enemy") == true then
+            physics:CollisionGroupSetCollidable(groupName, "Enemy", false)
+        end
     end)
 end
 
@@ -54,11 +54,8 @@ local function applyAntiHitGroup(groupName)
     local gid = PhysicsService:GetCollisionGroupId(groupName)
     for _, part in ipairs(Character:GetDescendants()) do
         if part:IsA("BasePart") then
-            -- Применяем группу
             pcall(function()
                 part.CollisionGroup = groupName
-            end)
-            pcall(function()
                 part.CollisionGroupId = gid
             end)
         end
@@ -67,10 +64,10 @@ local function applyAntiHitGroup(groupName)
 end
 
 local function restoreOriginalCollision()
-    for part, group in pairs(originalCollisionGroups) do
+    for part, groupName in pairs(originalCollisionGroups) do
         if part and part.Parent then
             pcall(function()
-                part.CollisionGroup = group
+                part.CollisionGroup = groupName
             end)
         end
     end
@@ -79,7 +76,6 @@ end
 
 local function enableAntiHit()
     if antiHitEnabled then return end
-    -- Создаем уникальную группу для игрока
     currentGroupName = "BrainrotAntiHit_" .. tostring(math.random(10000, 99999))
     applyAntiHitGroup(currentGroupName)
 end
@@ -109,9 +105,11 @@ end
 local function startRunMode()
     if not Humanoid or not HumanoidRootPart or not Character or not Character.Parent then return end
     enableAntiHit()
+    -- Разрешаем движение
     Humanoid.WalkSpeed = 16
     Humanoid.JumpPower = 50
     playRunAnimation()
+    print("Run mode activated: Anti-Hit enabled")
 end
 
 local function stopRunMode()
@@ -120,8 +118,10 @@ local function stopRunMode()
     Humanoid.WalkSpeed = 16
     Humanoid.JumpPower = 50
     if animTrack then animTrack:Stop() end
+    print("Run mode deactivated")
 end
 
+-- Графическое меню (draggable) с переключателем
 local function createUI()
     local playerGui = player:WaitForChild("PlayerGui")
 
@@ -200,6 +200,7 @@ local function createUI()
     updateUI(isActive)
 end
 
+-- Мониторинг ToolsBrainrot в Backpack
 local function onToolAdded(tool)
     if not tool or not tool:IsA("Tool") then return end
     if tostring(tool.Name):lower():find("brainrot") then
@@ -222,7 +223,7 @@ player.CharacterAdded:Connect(function(newCharacter)
     task.wait(1)
     Humanoid = Character:WaitForChild("Humanoid", 10)
     HumanoidRootPart = Character:WaitForChild("HumanoidRootPart", 10)
-
+    -- Сброс состояния anti-hit
     antiHitEnabled = false
     if isActive then
         local tool = Backpack:FindFirstChildOfClass("Tool")
@@ -246,5 +247,3 @@ if isActive then
         startRunMode()
     end
 end
-
--- End of Script
