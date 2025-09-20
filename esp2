@@ -1,6 +1,4 @@
-Прости за путаницу. Ниже весь код как полноценный Lua-скрипт (чтобы не было текста рядом с кодом). Этот локальный скрипт реализует Hold-to-Activate с draggable UI и без анимации бега.
 
-```lua
 -- Brainrot Ultimate Anti-Hit: Hold-to-Activate + Movable UI (Lua)
 
 local Players = game:GetService("Players")
@@ -258,4 +256,3 @@ RunService.Heartbeat:Connect(function()
         HumanoidRootPart.RotVelocity = Vector3.new(0, 0, 0)
     end
 end)
-```
