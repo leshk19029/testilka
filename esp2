@@ -1,9 +1,13 @@
+-- Brainrot Ultimate Anti-Hit: Menu-based toggle (Lua Script)
+-- Включение/выключение через встроенное меню вместо F9.
+-- Не ищем Brainrot в инвентаре.
 
 local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
+local PhysicsService = game:GetService("PhysicsService")
 local RunService = game:GetService("RunService")
-
+local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
+local Backpack = LocalPlayer:WaitForChild("Backpack")
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
 local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
@@ -12,9 +16,15 @@ local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart", 10)
 
 -- Настройки
 local IS_ACTIVE = true
+local RUN_ANIMATION_ID = 2510235062
+local animTrack = nil
 local originalPosition = HumanoidRootPart.Position
 
--- UI: меню с кнопками
+-- Для антихита
+local hitboxDisabled = false
+local originalProperties = {}
+
+-- Создание UI: меню с переключателем
 local function createUI()
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "BrainrotUI"
@@ -110,57 +120,132 @@ local function createUI()
     }
 end
 
--- Функция: выбор точки в пределах 30 studs
-local function findFreezePosition()
-    if not HumanoidRootPart then return nil end
-    local origin = HumanoidRootPart.Position
-    local originY = origin.Y
-    local params = RaycastParams.new()
-    params.FilterType = Enum.RaycastFilterType.Blacklist
-    if Character then
-        params.FilterDescendantsInstances = {Character}
-    end
-
-    for _ = 1, 20 do
-        local angle = math.rad(math.random(0, 360))
-        local radius = math.random() * 30
-        local x = origin.X + math.cos(angle) * radius
-        local z = origin.Z + math.sin(angle) * radius
-        local start = Vector3.new(x, originY + 20, z)
-        local dir = Vector3.new(0, -50, 0)
-        local hit = Workspace:Raycast(start, dir, params)
-        if hit and hit.Position then
-            return hit.Position
+-- Сохранение оригинальных свойств частeй
+local function saveOriginalProperties()
+    originalProperties = {}
+    for _, part in ipairs(Character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            originalProperties[part] = {
+                CanCollide = part.CanCollide,
+                CanTouch = part.CanTouch,
+                CanQuery = part.CanQuery,
+                Transparency = part.Transparency,
+                CollisionGroupId = part.CollisionGroupId
+            }
         end
     end
-    return origin
 end
 
--- Удаленная авто-заморозка: здесь ручной режим
+-- Создаем/обновляем уникальную коллизионную группу
+local function ensureCollisionGroup(name)
+    if not PhysicsService:IsCollisionGroupRegistered(name) then
+        PhysicsService:RegisterCollisionGroup(name)
+        PhysicsService:CollisionGroupSetCollidable(name, "Default", false)
+    end
+    return PhysicsService:GetCollisionGroupId(name)
+end
+
+-- Делаем персонажа неуязвимым
+local function enableAntiHit()
+    if hitboxDisabled then return end
+
+    pcall(function()
+        saveOriginalProperties()
+
+        local newCollisionGroup = "AntiHitGroup_" .. tostring(math.random(10000, 99999))
+        local groupId = ensureCollisionGroup(newCollisionGroup)
+
+        for _, part in ipairs(Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+                part.CanTouch = false
+                part.CanQuery = false
+                part.Transparency = 0.5
+                part.CollisionGroupId = groupId
+
+                -- Отключаем все силы
+                part.Velocity = Vector3.new(0, 0, 0)
+                part.RotVelocity = Vector3.new(0, 0, 0)
+            end
+        end
+
+        HumanoidRootPart.Anchored = true
+
+        hitboxDisabled = true
+        print("🛡️ Антихит активирован: коллизии отключены")
+    end)
+end
+
+-- Возвращаем оригинальные свойства
+local function disableAntiHit()
+    if not hitboxDisabled then return end
+
+    pcall(function()
+        for part, properties in pairs(originalProperties) do
+            if part and part.Parent then
+                part.CanCollide = properties.CanCollide
+                part.CanTouch = properties.CanTouch
+                part.CanQuery = properties.CanQuery
+                part.Transparency = properties.Transparency
+                part.CollisionGroupId = properties.CollisionGroupId
+            end
+        end
+
+        HumanoidRootPart.Anchored = false
+
+        hitboxDisabled = false
+        print("🛡️ Антихит деактивирован")
+    end)
+end
+
+-- Функция для запуска анимации
+local function playRunAnimation()
+    if animTrack and animTrack.IsPlaying then animTrack:Stop() end
+    local success, err = pcall(function()
+        local animation = Instance.new("Animation")
+        animation.AnimationId = "rbxassetid://" .. RUN_ANIMATION_ID
+        animTrack = Humanoid:LoadAnimation(animation)
+        animTrack:Play(0.1)
+        animTrack.Looped = true
+    end)
+    if success then
+        print("Run animation started")
+    else
+        warn("Animation error: " .. (err or "Unknown"))
+    end
+end
+
+-- Старт режима
 local function startRunMode()
     if not Humanoid or not HumanoidRootPart or not Character.Parent then return end
 
     originalPosition = HumanoidRootPart.Position
 
-    -- Ручная заморозка: фиксируем позу и отключаем движение
-    HumanoidRootPart.Anchored = true
+    enableAntiHit()
+
+    -- Клиентские настройки
     Humanoid.WalkSpeed = 0
     Humanoid.JumpPower = 0
+    playRunAnimation()
 
-    print("Run mode activated: заморозка и отключение движений включены")
+    print("Run mode activated: Ultimate anti-hit enabled")
 end
 
+-- Стоп режима
 local function stopRunMode()
     if not Humanoid or not HumanoidRootPart or not Character.Parent then return end
 
-    HumanoidRootPart.Anchored = false
+    disableAntiHit()
+
+    -- Восстановление параметров
     Humanoid.WalkSpeed = 16
     Humanoid.JumpPower = 50
+    if animTrack then animTrack:Stop() end
 
     print("Run mode deactivated")
 end
 
--- Фиксация позиции во время кадра
+-- Фиксация позиции
 RunService.Heartbeat:Connect(function()
     if IS_ACTIVE and HumanoidRootPart and HumanoidRootPart.Parent then
         HumanoidRootPart.CFrame = CFrame.new(originalPosition)
@@ -172,7 +257,7 @@ end)
 -- Инициализация UI
 local ui = createUI()
 
--- Инициализация состояния: запуск при включенном состоянии
+-- Инициализация состояния
 task.delay(0.2, function()
     if IS_ACTIVE then
         startRunMode()
@@ -186,6 +271,7 @@ local function onCharacterAdded(newCharacter)
     Humanoid = Character:WaitForChild("Humanoid", 10)
     HumanoidRootPart = Character:WaitForChild("HumanoidRootPart", 10)
 
+    hitboxDisabled = false
     if IS_ACTIVE then
         task.delay(0.5, function()
             startRunMode()
@@ -194,3 +280,8 @@ local function onCharacterAdded(newCharacter)
 end
 
 LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
+
+print("🎯 Brainrot Ultimate Anti-Hit загружен!")
+print("🛡️ CanCollide=false, CanTouch=false, CanQuery=false")
+print("🚫 Неуязвим к лучам, хитбоксам и коллизиям")
+print("💡 Меню доступно: BrainrotUI в PlayerGui")
