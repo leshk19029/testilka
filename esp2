@@ -1,5 +1,9 @@
+-- Brainrot Ultimate Anti-Hit: Menu-based toggle (Lua Script)
+-- Включение/выключение через встроенное меню вместо F9.
+-- Не ищем Brainrot в инвентаре.
 
 local Players = game:GetService("Players")
+local PhysicsService = game:GetService("PhysicsService")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
@@ -12,8 +16,8 @@ local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart", 10)
 
 -- Настройки
 local IS_ACTIVE = true
-local RUN_ANIMATION_ID = 2510235062
 local animTrack = nil
+local originalPosition = HumanoidRootPart.Position
 
 -- Создание UI: меню с переключателем
 local function createUI()
@@ -110,60 +114,44 @@ local function createUI()
         StatusLabel = statusLabel
     }
 end
-
--- Телепорт к случайной точке на окружности радиусом radius
-local function teleportToRandomCircle(radius)
-    local origin = HumanoidRootPart.Position
-    local theta = math.random() * 2 * math.pi
-    local dx = radius * math.cos(theta)
-    local dz = radius * math.sin(theta)
-    local newPos = Vector3.new(origin.X + dx, origin.Y, origin.Z + dz)
-
-    -- Прямой телепорт без привязки к ускорениям
-    HumanoidRootPart.CFrame = CFrame.new(newPos)
-    HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
-    HumanoidRootPart.RotVelocity = Vector3.new(0, 0, 0)
-end
-
--- Делаем персонажа неуязвимым (удалено: больше не требуется)
--- Вся логика теперь основана на телепорте к случайной точке
-
--- Функция для запуска режима
-local function playRunAnimation()
-    if animTrack and animTrack.IsPlaying then animTrack:Stop() end
-    local success, err = pcall(function()
-        local animation = Instance.new("Animation")
-        animation.AnimationId = "rbxassetid://" .. RUN_ANIMATION_ID
-        animTrack = Humanoid:LoadAnimation(animation)
-        animTrack:Play(0.1)
-        animTrack.Looped = true
-    end)
-    if not success then
-        warn("Animation error: " .. (err or "Unknown"))
-    end
-end
-
+-- Старт режима
 local function startRunMode()
     if not Humanoid or not HumanoidRootPart or not Character.Parent then return end
 
-    -- Телепортируемся на случайную точку вокруг текущей позиции
-    teleportToRandomCircle(25)
+    originalPosition = HumanoidRootPart.Position
 
-    -- Разрешаем движение (не блокируем игрока)
+    enableAntiHit()
+
+    -- Клиентские настройки
+    Humanoid.WalkSpeed = 0
+    Humanoid.JumpPower = 0
     playRunAnimation()
 
-    print("Run mode activated: Teleported to a random point on a circle of radius 25 studs")
+    print("Run mode activated: Ultimate anti-hit enabled")
 end
 
+-- Стоп режима
 local function stopRunMode()
     if not Humanoid or not HumanoidRootPart or not Character.Parent then return end
 
+    disableAntiHit()
+
+    -- Восстановление параметров
+    Humanoid.WalkSpeed = 16
+    Humanoid.JumpPower = 50
     if animTrack then animTrack:Stop() end
 
     print("Run mode deactivated")
 end
 
--- Удалена фиксация позиции через Heartbeat (не требуется)
+-- Фиксация позиции
+RunService.Heartbeat:Connect(function()
+    if IS_ACTIVE and HumanoidRootPart and HumanoidRootPart.Parent then
+        HumanoidRootPart.CFrame = CFrame.new(originalPosition)
+        HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
+        HumanoidRootPart.RotVelocity = Vector3.new(0, 0, 0)
+    end
+end)
 
 -- Инициализация UI
 local ui = createUI()
@@ -182,6 +170,7 @@ local function onCharacterAdded(newCharacter)
     Humanoid = Character:WaitForChild("Humanoid", 10)
     HumanoidRootPart = Character:WaitForChild("HumanoidRootPart", 10)
 
+    hitboxDisabled = false
     if IS_ACTIVE then
         task.delay(0.5, function()
             startRunMode()
