@@ -54,12 +54,40 @@ function Library:CreateMain(Options)
 		ResetOnSpawn = false,
 	})
 
+	-- Создаем кружок для открытия/закрытия меню
+	Main.ToggleButton = Library:Create("ImageButton", {
+		Name = "ToggleButton",
+		BackgroundColor3 = Color3.fromRGB(0, 183, 183),
+		BorderSizePixel = 0,
+		Position = UDim2.new(0, 20, 0, 20),
+		Size = UDim2.new(0, 50, 0, 50),
+		AutoButtonColor = false,
+		Image = "rbxassetid://3570695787",
+		ScaleType = Enum.ScaleType.Slice,
+		SliceCenter = Rect.new(100, 100, 100, 100),
+		SliceScale = 0.04,
+		ZIndex = 100,
+	})
+
+	-- Добавляем иконку меню на кнопку
+	Main.MenuIcon = Library:Create("ImageLabel", {
+		Name = "MenuIcon",
+		BackgroundTransparency = 1,
+		Position = UDim2.new(0.2, 0, 0.2, 0),
+		Size = UDim2.new(0.6, 0, 0.6, 0),
+		Image = "rbxassetid://3926305904",
+		ImageRectOffset = Vector2.new(4, 124),
+		ImageRectSize = Vector2.new(36, 36),
+		ImageColor3 = Color3.fromRGB(255, 255, 255),
+	})
+
 	Main.Motherframe = Library:Create("Frame", {
 		Name = "Motherframe",
 		BackgroundColor3 = Themes.Background,
 		BorderSizePixel = 0,
 		Position = UDim2.new(0.5, -400, 0.5, -225),
 		Size = UDim2.new(0, 700, 0, 460),
+		Visible = false, -- Сначала скрываем меню
 	})
 
 	table.insert(Objects.Background, Main.Motherframe)
@@ -72,9 +100,7 @@ function Library:CreateMain(Options)
 
 	local function update(input)
 		local delta
-		if input.UserInputType == Enum.UserInputType.MouseMovement then
-			delta = input.Position - dragStart
-		elseif input.UserInputType == Enum.UserInputType.Touch then
+		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
 			delta = input.Position - dragStart
 		end
 		
@@ -98,7 +124,7 @@ function Library:CreateMain(Options)
 			local connection
 			connection = RS.Heartbeat:Connect(function()
 				if dragging then
-					if input.UserInputType == Enum.UserInputType.MouseButton1 then
+					if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 						update(input)
 					end
 				else
@@ -126,7 +152,7 @@ function Library:CreateMain(Options)
 	Main.Motherframe.InputChanged:Connect(onInputChanged)
 	Main.Motherframe.InputEnded:Connect(onInputEnded)
 
-	-- Also handle global input for better mobile support
+	-- Также обрабатываем глобальный ввод для лучшей поддержки мобильных устройств
 	UIS.InputBegan:Connect(function(input)
 		if (input.UserInputType == Enum.UserInputType.Touch) then
 			onInputBegan(input)
@@ -145,6 +171,72 @@ function Library:CreateMain(Options)
 		end
 	end)
 
+	-- Функция для перетаскивания кнопки меню
+	local toggleDragging = false
+	local toggleDragStart
+	local toggleStartPos
+
+	local function updateTogglePosition(input)
+		local delta
+		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+			delta = input.Position - toggleDragStart
+		end
+		
+		if delta then
+			local newX = math.clamp(toggleStartPos.X.Offset + delta.X, 0, workspace.CurrentCamera.ViewportSize.X - Main.ToggleButton.AbsoluteSize.X)
+			local newY = math.clamp(toggleStartPos.Y.Offset + delta.Y, 0, workspace.CurrentCamera.ViewportSize.Y - Main.ToggleButton.AbsoluteSize.Y)
+			
+			Main.ToggleButton:TweenPosition(UDim2.new(0, newX, 0, newY), 'Out', 'Linear', 0.01, true)
+		end
+	end
+
+	Main.ToggleButton.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			toggleDragging = true
+			toggleDragStart = input.Position
+			toggleStartPos = Main.ToggleButton.Position
+			
+			-- Connect for continuous updates
+			local connection
+			connection = RS.Heartbeat:Connect(function()
+				if toggleDragging then
+					if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+						updateTogglePosition(input)
+					end
+				else
+					connection:Disconnect()
+				end
+			end)
+		end
+	end)
+
+	Main.ToggleButton.InputChanged:Connect(function(input)
+		if toggleDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+			updateTogglePosition(input)
+		end
+	end)
+
+	Main.ToggleButton.InputEnded:Connect(function(input)
+		if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) and toggleDragging then
+			toggleDragging = false
+			
+			-- Если было короткое нажатие, а не перетаскивание, открываем/закрываем меню
+			local delta = (input.Position - toggleDragStart).Magnitude
+			if delta < 10 then -- Пороговое значение для определения клика
+				Main.Motherframe.Visible = not Main.Motherframe.Visible
+				
+				-- Анимация появления/исчезновения
+				if Main.Motherframe.Visible then
+					Main.Motherframe.Position = UDim2.new(0.5, -400, 0.5, -225)
+					TS:Create(Main.Motherframe, TweenInfo.new(0.2), {Size = UDim2.new(0, 700, 0, 460)}):Play()
+				else
+					TS:Create(Main.Motherframe, TweenInfo.new(0.2), {Size = UDim2.new(0, 0, 0, 0)}):Play()
+				end
+			end
+		end
+	end)
+
+	-- Остальной код остается без изменений...
 	Main.Upline = Library:Create("Frame", {
 		Name = "Upline",
 		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
@@ -2385,6 +2477,8 @@ function Library:CreateMain(Options)
 
 	end
 
+	Main.ToggleButton.Parent = Main.Screengui
+	Main.MenuIcon.Parent = Main.ToggleButton
 	Main.Screengui.Parent = game:GetService("CoreGui")
 	Main.Motherframe.Parent = Main.Screengui
 	Main.Upline.Parent = Main.Motherframe
@@ -2393,6 +2487,8 @@ function Library:CreateMain(Options)
 	Main.Categorieshandler.Parent = Main.Motherframe
 	Main.Categoriesselector.Parent = Main.Sidebar
 
+	return Main
+end
 	return Main
 end
 
