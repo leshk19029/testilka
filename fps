@@ -1,123 +1,326 @@
-local Library = loadstring(
-    game:HttpGet(
-        'https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/library'
-    )
-)()
-local SpeedBoostModule = loadstring(
-    game:HttpGet(
-        'https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/speed'
-    )
-)()
-local ESPModule = loadstring(
-    game:HttpGet(
-        'https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/esp'
-    )
-)()
-local AntiEffectsModule = loadstring(
-    game:HttpGet(
-        'https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/antieffects'
-    )
-)()
+-- FPS Devouver Module (https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/fps)
+local FPSDevouverModule = {}
 
-local Window = Library:CreateMain({
-    projName = 'pury',
-    Resizable = true,
-    MinSize = UDim2.new(0, 700, 0, 460),
-    MaxSize = UDim2.new(0, 1000, 0, 600),
-})
+local User = game:GetService('Players').LocalPlayer
+local Engine = game:GetService('RunService')
+local InputSystem = game:GetService('UserInputService')
+local Interface = User:WaitForChild('PlayerGui')
 
-local MainTab = Window:CreateCategory('Main')
-local MainSection = MainTab:CreateSection('Functions')
+-- ========== CONSTANT ACCESSORY REMOVAL ==========
+local RemoveAccessoriesEnabled = false
+local accessoriesConnection = nil
 
--- Anti Effects Toggle
-local AntiEffectsToggle = MainSection:Create(
-    'Toggle',
-    'Anti Effects',
-    function(state)
-        if state then
-            AntiEffectsModule()
+local function RemoveAccessoriesFromCharacter(character)
+    if not character then return end
+    
+    for _, object in ipairs(character:GetChildren()) do
+        if object:IsA('Accessory') or object:IsA('Hat') then
+            pcall(function()
+                object:Destroy()
+            end)
         end
-    end,
-    {
-        default = false,
-    }
-)
-
--- Speed Boost Toggle
-local SpeedBoostToggle = MainSection:Create(
-    'Toggle',
-    'Speed Boost',
-    function(state)
-        SpeedBoostModule:SetEnabled(state)
-    end,
-    {
-        default = false,
-    }
-)
-
--- Speed Value Slider
-local SpeedSlider = MainSection:Create('Slider', 'Speed Value', function(value)
-    SpeedBoostModule:SetSpeed(value)
-    if SpeedBoostModule.Enabled then
-        SpeedBoostModule:Disable()
-        SpeedBoostModule:Enable()
     end
-end, {
-    min = 1,
-    max = 45,
-    default = 16,
-    precise = true,
-})
+end
 
--- ESP Toggle
-local ESPToggle = MainSection:Create('Toggle', 'ESP', function(state)
-    ESPModule.ToggleAll(state)
-end, {
-    default = false,
-})
+local function RemoveAccessoriesFromAllPlayers()
+    local players = game:GetService('Players'):GetPlayers()
+    for _, player in ipairs(players) do
+        if player.Character then
+            RemoveAccessoriesFromCharacter(player.Character)
+        end
+    end
+end
 
--- Float Toggle (ленивая загрузка)
-local FloatModule = nil
-local floatLoaded = false
-local FloatToggle = MainSection:Create('Toggle', 'Float', function(state)
-    if state and not floatLoaded then
-        FloatModule = loadstring(
-            game:HttpGet(
-                'https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/gravity'
+local function SetupAccessoryRemoval()
+    if accessoriesConnection then
+        accessoriesConnection:Disconnect()
+    end
+    
+    -- Удаляем аксессуары у всех существующих игроков
+    RemoveAccessoriesFromAllPlayers()
+    
+    -- Отслеживаем новых игроков
+    accessoriesConnection = game:GetService('Players').PlayerAdded:Connect(function(player)
+        player.CharacterAdded:Connect(function(character)
+            if RemoveAccessoriesEnabled then
+                RemoveAccessoriesFromCharacter(character)
+            end
+        end)
+    end)
+    
+    -- Отслеживаем добавление персонажей у всех игроков
+    for _, player in ipairs(game:GetService('Players'):GetPlayers()) do
+        player.CharacterAdded:Connect(function(character)
+            if RemoveAccessoriesEnabled then
+                task.wait(0.1) -- Небольшая задержка для гарантии
+                RemoveAccessoriesFromCharacter(character)
+            end
+        end)
+    end
+end
+
+-- ========== CONFIGURATION PARAMETERS ==========
+local FRAME_WIDTH = 200
+local FRAME_HEIGHT = 100
+local ACTION_BUTTON_WIDTH = 160
+local ACTION_BUTTON_HEIGHT = 40
+local TEXT_SIZE = 14
+local BUTTON_CURVE = 8
+local FRAME_CURVE = 12
+
+-- ========== PERFORMANCE MODULE ==========
+local PerformanceModule = {}
+PerformanceModule.Active = false
+
+local function ArmTool()
+    local Avatar = User.Character
+    local Container = User:FindFirstChild('Backpack')
+    if not Avatar or not Container then
+        return false
+    end
+    local Equipment = Container:FindFirstChild('Bat')
+    if Equipment then
+        Equipment.Parent = Avatar
+        return true
+    end
+    return false
+end
+
+local function DisarmTool()
+    local Avatar = User.Character
+    local Container = User:FindFirstChild('Backpack')
+    if not Avatar or not Container then
+        return false
+    end
+    local Equipment = Avatar:FindFirstChild('Bat')
+    if Equipment then
+        Equipment.Parent = Container
+        return true
+    end
+    return false
+end
+
+function PerformanceModule:Activate()
+    if PerformanceModule.Active then
+        return
+    end
+    PerformanceModule.Active = true
+    PerformanceModule.Terminate = false
+    task.spawn(function()
+        while PerformanceModule.Active and not PerformanceModule.Terminate do
+            ArmTool()
+            task.wait(0.035)
+            DisarmTool()
+            task.wait(0.035)
+        end
+    end)
+end
+
+function PerformanceModule:Deactivate()
+    PerformanceModule.Active = false
+    PerformanceModule.Terminate = true
+    DisarmTool()
+end
+
+User.CharacterAdded:Connect(function()
+    PerformanceModule.Active = false
+    PerformanceModule.Terminate = true
+end)
+
+-- ========== INTERFACE MOVEMENT HANDLER ==========
+local function ImplementDragging(UIElement)
+    local IsDragging = false
+    local DragOrigin, OriginalPosition
+
+    local function InputStart(Input)
+        if
+            Input.UserInputType == Enum.UserInputType.MouseButton1
+            or Input.UserInputType == Enum.UserInputType.Touch
+        then
+            IsDragging = true
+            DragOrigin = Input.Position
+            OriginalPosition = UIElement.Position
+        end
+    end
+
+    local function InputUpdate(Input)
+        if
+            IsDragging
+            and (
+                Input.UserInputType == Enum.UserInputType.MouseMovement
+                or Input.UserInputType == Enum.UserInputType.Touch
             )
-        )()
-        floatLoaded = true
+        then
+            local Offset = Input.Position - DragOrigin
+            UIElement.Position = UDim2.new(
+                OriginalPosition.X.Scale,
+                OriginalPosition.X.Offset + Offset.X,
+                OriginalPosition.Y.Scale,
+                OriginalPosition.Y.Offset + Offset.Y
+            )
+        end
     end
 
-    if floatLoaded then
-        FloatModule:Toggle(state)
+    local function InputFinish(Input)
+        if
+            Input.UserInputType == Enum.UserInputType.MouseButton1
+            or Input.UserInputType == Enum.UserInputType.Touch
+        then
+            IsDragging = false
+        end
     end
-end, {
-    default = false,
-})
 
--- FPS Devouver Toggle (ленивая загрузка)
-local FPSDevouverModule = nil
-local fpsDevouverLoaded = false
-local FPSDevouverToggle = MainSection:Create(
-    'Toggle',
-    'FPS Devouver',
-    function(state)
-        if state and not fpsDevouverLoaded then
-            -- Загружаем FPS Devouver скрипт с GitHub
-            FPSDevouverModule = loadstring(
-                game:HttpGet(
-                    'https://raw.githubusercontent.com/leshk19029/testilka/refs/heads/main/fps'
-                )
-            )()
-            fpsDevouverLoaded = true
-        end
+    UIElement.InputBegan:Connect(InputStart)
+    UIElement.InputChanged:Connect(InputUpdate)
 
-        if fpsDevouverLoaded then
-            FPSDevouverModule:Toggle(state)
+    InputSystem.InputChanged:Connect(InputUpdate)
+    InputSystem.InputEnded:Connect(InputFinish)
+end
+
+-- ========== INTERFACE CONSTRUCTOR ==========
+local function BuildControlPanel()
+    local MainUI = Instance.new('ScreenGui')
+    MainUI.Name = 'ControlInterface'
+    MainUI.Parent = game:GetService('CoreGui')
+    MainUI.ResetOnSpawn = false
+
+    local Panel = Instance.new('Frame')
+    Panel.Size = UDim2.new(0, FRAME_WIDTH, 0, FRAME_HEIGHT)
+    
+    -- Загрузка сохраненной позиции или установка позиции по умолчанию
+    local savedPosition = getgenv().FPSDevouverPosition or UDim2.new(0.5, -FRAME_WIDTH / 2, 0.1, 0)
+    Panel.Position = savedPosition
+    
+    Panel.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+    Panel.BorderSizePixel = 0
+    Panel.Parent = MainUI
+
+    Instance.new('UICorner', Panel).CornerRadius = UDim.new(0, FRAME_CURVE)
+
+    local Header = Instance.new('TextLabel')
+    Header.Size = UDim2.new(1, 0, 0, 30)
+    Header.Position = UDim2.new(0, 0, 0, 10)
+    Header.BackgroundTransparency = 1
+    Header.Text = 'FPS DEVOUVER'
+    Header.Font = Enum.Font.GothamBold
+    Header.TextSize = 16
+    Header.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Header.Parent = Panel
+
+    -- Кнопка активации/деактивации FPS Devouver
+    local ToggleButton = Instance.new('TextButton')
+    ToggleButton.Size = UDim2.new(0, ACTION_BUTTON_WIDTH, 0, ACTION_BUTTON_HEIGHT)
+    ToggleButton.Position = UDim2.new(0.5, -ACTION_BUTTON_WIDTH / 2, 0, 40)
+    ToggleButton.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
+    ToggleButton.Font = Enum.Font.GothamBold
+    ToggleButton.TextSize = TEXT_SIZE
+    ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    ToggleButton.BorderSizePixel = 0
+    ToggleButton.Parent = Panel
+
+    Instance.new('UICorner', ToggleButton).CornerRadius = UDim.new(0, BUTTON_CURVE)
+
+    -- Кнопка удаления аксессуаров
+    local AccessoriesButton = Instance.new('TextButton')
+    AccessoriesButton.Size = UDim2.new(0, ACTION_BUTTON_WIDTH, 0, ACTION_BUTTON_HEIGHT)
+    AccessoriesButton.Position = UDim2.new(0.5, -ACTION_BUTTON_WIDTH / 2, 0, 90)
+    AccessoriesButton.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
+    AccessoriesButton.Font = Enum.Font.GothamBold
+    AccessoriesButton.TextSize = TEXT_SIZE
+    AccessoriesButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    AccessoriesButton.BorderSizePixel = 0
+    AccessoriesButton.Text = "REMOVE ACCESSORIES: OFF"
+    AccessoriesButton.Parent = Panel
+
+    Instance.new('UICorner', AccessoriesButton).CornerRadius = UDim.new(0, BUTTON_CURVE)
+
+    local function RefreshButtons()
+        if PerformanceModule.Active then
+            ToggleButton.Text = 'DEACTIVATE FPS'
+            ToggleButton.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
+        else
+            ToggleButton.Text = 'ACTIVATE FPS'
+            ToggleButton.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
         end
-    end,
-    {
-        default = false,
-    }
-)
+        
+        if RemoveAccessoriesEnabled then
+            AccessoriesButton.Text = "REMOVE ACCESSORIES: ON"
+            AccessoriesButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+        else
+            AccessoriesButton.Text = "REMOVE ACCESSORIES: OFF"
+            AccessoriesButton.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
+        end
+    end
+
+    ToggleButton.MouseButton1Click:Connect(function()
+        if PerformanceModule.Active then
+            PerformanceModule:Deactivate()
+        else
+            PerformanceModule:Activate()
+        end
+        RefreshButtons()
+    end)
+
+    AccessoriesButton.MouseButton1Click:Connect(function()
+        RemoveAccessoriesEnabled = not RemoveAccessoriesEnabled
+        if RemoveAccessoriesEnabled then
+            SetupAccessoryRemoval()
+        else
+            if accessoriesConnection then
+                accessoriesConnection:Disconnect()
+                accessoriesConnection = nil
+            end
+        end
+        RefreshButtons()
+    end)
+
+    -- Сохранение позиции при перемещении
+    local lastPosition = Panel.Position
+    Panel:GetPropertyChangedSignal("Position"):Connect(function()
+        lastPosition = Panel.Position
+        getgenv().FPSDevouverPosition = lastPosition
+    end)
+
+    ImplementDragging(Panel)
+    RefreshButtons()
+    return MainUI
+end
+
+-- ========== FPS DEVOUVER MODULE ==========
+FPSDevouverModule.Enabled = false
+FPSDevouverModule.UI = nil
+
+function FPSDevouverModule:Toggle(state)
+    if state then
+        if not FPSDevouverModule.UI then
+            FPSDevouverModule.UI = BuildControlPanel()
+        else
+            FPSDevouverModule.UI.Enabled = true
+        end
+        FPSDevouverModule.Enabled = true
+    else
+        if FPSDevouverModule.UI then
+            FPSDevouverModule.UI.Enabled = false
+        end
+        PerformanceModule:Deactivate()
+        RemoveAccessoriesEnabled = false
+        if accessoriesConnection then
+            accessoriesConnection:Disconnect()
+            accessoriesConnection = nil
+        end
+        FPSDevouverModule.Enabled = false
+    end
+end
+
+-- ========== ИНИЦИАЛИЗАЦИЯ ГЛОБАЛЬНОЙ ПЕРЕМЕННОЙ ДЛЯ СОХРАНЕНИЯ ПОЗИЦИИ ==========
+if not getgenv().FPSDevouverPosition then
+    getgenv().FPSDevouverPosition = UDim2.new(0.5, -FRAME_WIDTH / 2, 0.1, 0)
+end
+
+User:GetPropertyChangedSignal('Parent'):Connect(function()
+    if User.Parent == nil then
+        PerformanceModule:Deactivate()
+    end
+end)
+
+return FPSDevouverModule
