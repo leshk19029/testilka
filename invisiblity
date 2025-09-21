@@ -575,6 +575,30 @@ function InvisibilityStealModule:Disable()
     end
 end
 
+-- В модуль InvisibilityStealModule добавьте эти методы:
+
+function InvisibilityStealModule:ShowUI()
+    if screenGui then
+        screenGui.Enabled = true
+    else
+        createUI() -- Создаем UI если его нет
+    end
+end
+
+function InvisibilityStealModule:HideUI()
+    if screenGui then
+        screenGui.Enabled = false
+    end
+end
+
+function InvisibilityStealModule:ToggleUI(state)
+    if state then
+        self:ShowUI()
+    else
+        self:HideUI()
+    end
+end
+
 function InvisibilityStealModule:Toggle(state)
     if state then
         self:Enable()
