@@ -12,14 +12,22 @@ function FPSDevouverModule:Initialize()
     local RunService = game:GetService('RunService')
     local UserInputService = game:GetService('UserInputService')
 
-    -- Константы
-    local PANEL_WIDTH = 200
-    local PANEL_HEIGHT = 80
-    local BTN_WIDTH = 160
-    local BTN_HEIGHT = 40
-    local BTN_FONT_SIZE = 14
-    local CORNER_RADIUS = 12
-    local SWAP_DELAY = 0.03
+    -- Константы (как в оригинальном коде)
+    local SCALE = 0.7
+    local PANEL_WIDTH, PANEL_HEIGHT = math.floor(212 * SCALE), math.floor(90 * SCALE)
+    local PANEL_RADIUS = math.floor(13 * SCALE)
+    local TITLE_HEIGHT = math.floor(32 * SCALE)
+    local BTN_WIDTH = math.floor(0.89 * PANEL_WIDTH)
+    local BTN_HEIGHT = math.floor(34 * SCALE)
+    local BTN_RADIUS = math.floor(8 * SCALE)
+    local BTN_FONT_SIZE = math.floor(17 * SCALE)
+    local TITLE_FONT_SIZE = math.floor(19 * SCALE)
+    local ICON_SIZE = math.floor(16 * SCALE)
+    local BTN_ICON_PAD = math.floor(8 * SCALE)
+    local BTN_Y0 = math.floor(38 * SCALE)
+
+    -- Задержки как в оригинальном коде
+    local SWAP_DELAY = 0.035
 
     -- Сохранение позиции
     local positionKey = "fpsdevouver_window_position"
@@ -36,85 +44,85 @@ function FPSDevouverModule:Initialize()
     screenGui.Parent = game:GetService('CoreGui')
     screenGui.ResetOnSpawn = false
 
-    local mainFrame = Instance.new('Frame')
-    mainFrame.Size = UDim2.new(0, PANEL_WIDTH, 0, PANEL_HEIGHT)
+    local main = Instance.new('Frame')
+    main.Size = UDim2.new(0, PANEL_WIDTH, 0, PANEL_HEIGHT)
 
     -- Устанавливаем сохранённую позицию или позицию по умолчанию
     if savedPosition then
-        mainFrame.Position = UDim2.new(
+        main.Position = UDim2.new(
             savedPosition.X.Scale,
             savedPosition.X.Offset,
             savedPosition.Y.Scale,
             savedPosition.Y.Offset
         )
     else
-        mainFrame.Position = UDim2.new(0.5, -PANEL_WIDTH / 2, 0.1, 0)
+        main.Position = UDim2.new(1, -PANEL_WIDTH - 10, 0, 10) -- Правый верхний угол
     end
 
-    mainFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-    mainFrame.BorderSizePixel = 0
-    mainFrame.Parent = screenGui
+    main.BackgroundColor3 = Color3.fromRGB(13, 13, 13)
+    main.BorderSizePixel = 0
+    main.Active = true
+    main.Parent = screenGui
 
-    Instance.new('UICorner', mainFrame).CornerRadius = UDim.new(0, CORNER_RADIUS)
+    Instance.new('UICorner', main).CornerRadius = UDim.new(0, PANEL_RADIUS)
 
     local title = Instance.new('TextLabel')
-    title.Size = UDim2.new(1, 0, 0, 30)
-    title.Position = UDim2.new(0, 0, 0, 10)
+    title.Size = UDim2.new(1, 0, 0, TITLE_HEIGHT)
+    title.Position = UDim2.new(0, 0, 0, 0)
+    title.Text = 'FPS DEVOURER'
+    title.Font = Enum.Font.GothamBlack
+    title.TextSize = TITLE_FONT_SIZE
     title.BackgroundTransparency = 1
-    title.Text = 'FPS DEVOUVER'
-    title.Font = Enum.Font.GothamBold
-    title.TextSize = 16
     title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    title.Parent = mainFrame
+    title.TextStrokeTransparency = 0.08
+    title.TextStrokeColor3 = Color3.fromRGB(220, 220, 220)
+    title.Parent = main
 
-    -- Кнопка Start/Stop
-    local mainBtn = Instance.new('TextButton')
-    mainBtn.Size = UDim2.new(0, BTN_WIDTH, 0, BTN_HEIGHT)
-    mainBtn.Position = UDim2.new(0.5, -BTN_WIDTH / 2, 0, 40)
-    mainBtn.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
-    mainBtn.Font = Enum.Font.GothamBold
-    mainBtn.TextSize = BTN_FONT_SIZE
-    mainBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    mainBtn.BorderSizePixel = 0
-    mainBtn.Parent = mainFrame
-
-    Instance.new('UICorner', mainBtn).CornerRadius = UDim.new(0, 8)
-
-    -- Функция свапа биты
-    local function performSingleSwap()
+    -- Функция удаления аксессуаров (как в оригинале)
+    local function removeAllAccessoriesFromCharacter()
         local character = player.Character
-        local backpack = player:FindFirstChild('Backpack')
-
-        if not character or not backpack then
-            return
-        end
-
-        local batInCharacter = character:FindFirstChild('Bat')
-        local batInBackpack = backpack:FindFirstChild('Bat')
-
-        if batInCharacter then
-            batInCharacter.Parent = backpack
-        elseif batInBackpack then
-            batInBackpack.Parent = character
-        end
-    end
-
-    -- Функция удаления аксессуаров
-    local function removeAccessories()
-        local players = game.Players:GetPlayers()
-        for _, plr in pairs(players) do
-            local character = plr.Character
-            if character then
-                for _, item in pairs(character:GetChildren()) do
-                    if item:IsA('Accessory') then
-                        item:Destroy()
-                    end
-                end
+        if not character then return end
+        
+        for _, item in ipairs(character:GetChildren()) do
+            if item:IsA('Accessory') or item:IsA('LayeredClothing') or 
+               item:IsA('Shirt') or item:IsA('ShirtGraphic') or 
+               item:IsA('Pants') or item:IsA('BodyColors') or 
+               item:IsA('CharacterMesh') then
+                pcall(function() item:Destroy() end)
             end
         end
     end
 
-    -- Управление циклами
+    -- Функция свапа биты (как в оригинале)
+    local TOOL_NAME = 'Bat'
+    
+    local function equipTungBat()
+        local character = player.Character
+        local backpack = player:FindFirstChild('Backpack')
+        if not character or not backpack then return false end
+        
+        local tool = backpack:FindFirstChild(TOOL_NAME)
+        if tool then
+            tool.Parent = character
+            return true
+        end
+        return false
+    end
+
+    local function unequipTungBat()
+        local character = player.Character
+        local backpack = player:FindFirstChild('Backpack')
+        if not character or not backpack then return false end
+        
+        local tool = character:FindFirstChild(TOOL_NAME)
+        if tool then
+            tool.Parent = backpack
+            return true
+        end
+        return false
+    end
+
+    -- Управление циклами с оригинальными задержками
     local function toggleSwapLoop()
         if isSwapping then
             isSwapping = false
@@ -124,14 +132,17 @@ function FPSDevouverModule:Initialize()
             end
         else
             isSwapping = true
-            performSingleSwap()
-
+            
             swapConnection = RunService.Heartbeat:Connect(function()
                 if not isSwapping then
                     swapConnection:Disconnect()
                     return
                 end
-                performSingleSwap()
+                
+                -- Точная логика как в оригинале: equip -> wait -> unequip -> wait
+                equipTungBat()
+                task.wait(SWAP_DELAY)
+                unequipTungBat()
                 task.wait(SWAP_DELAY)
             end)
         end
@@ -148,26 +159,37 @@ function FPSDevouverModule:Initialize()
                 removeConnection:Disconnect()
                 return
             end
-            removeAccessories()
-            task.wait(0.01)
+            removeAllAccessoriesFromCharacter()
+            task.wait(0.1) -- Реже проверяем
         end)
     end
 
     -- Функция перетаскивания с сохранением позиции
     local function setupDrag(frame)
-        local dragging = false
-        local dragStart, startPos
-
-        local function onInputBegan(input)
+        local dragging, dragInput, dragStart, startPos
+        
+        frame.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 then
                 dragging = true
                 dragStart = input.Position
                 startPos = frame.Position
+                
+                input.Changed:Connect(function()
+                    if input.UserInputState == Enum.UserInputState.End then
+                        dragging = false
+                    end
+                end)
             end
-        end
-
-        local function onInputChanged(input)
-            if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        end)
+        
+        frame.InputChanged:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseMovement then
+                dragInput = input
+            end
+        end)
+        
+        UserInputService.InputChanged:Connect(function(input)
+            if dragging and input == dragInput then
                 local delta = input.Position - dragStart
                 local newPosition = UDim2.new(
                     startPos.X.Scale,
@@ -183,46 +205,61 @@ function FPSDevouverModule:Initialize()
                     Y = {Scale = newPosition.Y.Scale, Offset = newPosition.Y.Offset}
                 }
                 
-                -- Сохраняем в файл
                 pcall(function()
                     writefile(positionKey, game:GetService("HttpService"):JSONEncode(savedPosition))
                 end)
             end
-        end
-
-        local function onInputEnded(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                dragging = false
-            end
-        end
-
-        frame.InputBegan:Connect(onInputBegan)
-        frame.InputChanged:Connect(onInputChanged)
-        UserInputService.InputChanged:Connect(onInputChanged)
-        UserInputService.InputEnded:Connect(onInputEnded)
+        end)
     end
+
+    -- Создаем кнопку
+    local btn = Instance.new('TextButton')
+    btn.Size = UDim2.new(0, BTN_WIDTH, 0, BTN_HEIGHT)
+    btn.Position = UDim2.new(0, math.floor((PANEL_WIDTH - BTN_WIDTH) / 2), 0, BTN_Y0)
+    btn.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
+    btn.Text = 'Start'
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = BTN_FONT_SIZE
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.BorderSizePixel = 0
+    btn.AutoButtonColor = false
+    btn.Parent = main
+
+    Instance.new('UICorner', btn).CornerRadius = UDim.new(0, BTN_RADIUS)
 
     -- Обновление текста кнопки
     local function updateButton()
         if isSwapping then
-            mainBtn.Text = 'Stop'
-            mainBtn.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
+            btn.Text = 'Stop'
+            btn.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
         else
-            mainBtn.Text = 'Start'
-            mainBtn.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
+            btn.Text = 'Start'
+            btn.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
         end
     end
 
-    mainBtn.MouseButton1Click:Connect(function()
+    btn.MouseButton1Click:Connect(function()
         toggleSwapLoop()
         updateButton()
     end)
 
     -- Настройка перетаскивания
-    setupDrag(mainFrame)
+    setupDrag(main)
 
     updateButton()
     startRemoveAccessoriesLoop()
+
+    -- Обработчики для сброса при смене персонажа
+    player.CharacterAdded:Connect(function()
+        isSwapping = false
+        if swapConnection then
+            swapConnection:Disconnect()
+            swapConnection = nil
+        end
+        updateButton()
+        task.wait(0.2)
+        removeAllAccessoriesFromCharacter()
+    end)
 end
 
 function FPSDevouverModule:Toggle(state)
