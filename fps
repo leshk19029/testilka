@@ -6,62 +6,43 @@ local Engine = game:GetService('RunService')
 local InputSystem = game:GetService('UserInputService')
 local Interface = User:WaitForChild('PlayerGui')
 
--- ========== CONSTANT ACCESSORY REMOVAL ==========
-local RemoveAccessoriesEnabled = false
-local accessoriesConnection = nil
+-- ========== ACCESSORY REMOVAL LOOP ==========
+local accessoryRemovalLoop = nil
+local accessoryRemovalEnabled = false
 
-local function RemoveAccessoriesFromCharacter(character)
-    if not character then return end
-    
-    for _, object in ipairs(character:GetChildren()) do
-        if object:IsA('Accessory') or object:IsA('Hat') then
-            pcall(function()
-                object:Destroy()
-            end)
-        end
-    end
-end
-
-local function RemoveAccessoriesFromAllPlayers()
-    local players = game:GetService('Players'):GetPlayers()
-    for _, player in ipairs(players) do
-        if player.Character then
-            RemoveAccessoriesFromCharacter(player.Character)
-        end
-    end
-end
-
-local function SetupAccessoryRemoval()
-    if accessoriesConnection then
-        accessoriesConnection:Disconnect()
+local function StartAccessoryRemoval()
+    if accessoryRemovalLoop then
+        accessoryRemovalLoop:Disconnect()
+        accessoryRemovalLoop = nil
     end
     
-    -- Удаляем аксессуары у всех существующих игроков
-    RemoveAccessoriesFromAllPlayers()
-    
-    -- Отслеживаем новых игроков
-    accessoriesConnection = game:GetService('Players').PlayerAdded:Connect(function(player)
-        player.CharacterAdded:Connect(function(character)
-            if RemoveAccessoriesEnabled then
-                RemoveAccessoriesFromCharacter(character)
+    accessoryRemovalLoop = Engine.Heartbeat:Connect(function()
+        local players = game:GetService('Players'):GetPlayers()
+        for _, player in pairs(players) do
+            local character = player.Character
+            if character then
+                for _, item in pairs(character:GetChildren()) do
+                    if item:IsA("Accessory") then
+                        pcall(function()
+                            item:Destroy()
+                        end)
+                    end
+                end
             end
-        end)
+        end
     end)
-    
-    -- Отслеживаем добавление персонажей у всех игроков
-    for _, player in ipairs(game:GetService('Players'):GetPlayers()) do
-        player.CharacterAdded:Connect(function(character)
-            if RemoveAccessoriesEnabled then
-                task.wait(0.1) -- Небольшая задержка для гарантии
-                RemoveAccessoriesFromCharacter(character)
-            end
-        end)
+end
+
+local function StopAccessoryRemoval()
+    if accessoryRemovalLoop then
+        accessoryRemovalLoop:Disconnect()
+        accessoryRemovalLoop = nil
     end
 end
 
 -- ========== CONFIGURATION PARAMETERS ==========
 local FRAME_WIDTH = 200
-local FRAME_HEIGHT = 100
+local FRAME_HEIGHT = 80
 local ACTION_BUTTON_WIDTH = 160
 local ACTION_BUTTON_HEIGHT = 40
 local TEXT_SIZE = 14
@@ -207,7 +188,6 @@ local function BuildControlPanel()
     Header.TextColor3 = Color3.fromRGB(255, 255, 255)
     Header.Parent = Panel
 
-    -- Кнопка активации/деактивации FPS Devouver
     local ToggleButton = Instance.new('TextButton')
     ToggleButton.Size = UDim2.new(0, ACTION_BUTTON_WIDTH, 0, ACTION_BUTTON_HEIGHT)
     ToggleButton.Position = UDim2.new(0.5, -ACTION_BUTTON_WIDTH / 2, 0, 40)
@@ -220,35 +200,13 @@ local function BuildControlPanel()
 
     Instance.new('UICorner', ToggleButton).CornerRadius = UDim.new(0, BUTTON_CURVE)
 
-    -- Кнопка удаления аксессуаров
-    local AccessoriesButton = Instance.new('TextButton')
-    AccessoriesButton.Size = UDim2.new(0, ACTION_BUTTON_WIDTH, 0, ACTION_BUTTON_HEIGHT)
-    AccessoriesButton.Position = UDim2.new(0.5, -ACTION_BUTTON_WIDTH / 2, 0, 90)
-    AccessoriesButton.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
-    AccessoriesButton.Font = Enum.Font.GothamBold
-    AccessoriesButton.TextSize = TEXT_SIZE
-    AccessoriesButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    AccessoriesButton.BorderSizePixel = 0
-    AccessoriesButton.Text = "REMOVE ACCESSORIES: OFF"
-    AccessoriesButton.Parent = Panel
-
-    Instance.new('UICorner', AccessoriesButton).CornerRadius = UDim.new(0, BUTTON_CURVE)
-
-    local function RefreshButtons()
+    local function RefreshButton()
         if PerformanceModule.Active then
-            ToggleButton.Text = 'DEACTIVATE FPS'
+            ToggleButton.Text = 'DEACTIVATE'
             ToggleButton.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
         else
-            ToggleButton.Text = 'ACTIVATE FPS'
+            ToggleButton.Text = 'ACTIVATE'
             ToggleButton.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
-        end
-        
-        if RemoveAccessoriesEnabled then
-            AccessoriesButton.Text = "REMOVE ACCESSORIES: ON"
-            AccessoriesButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
-        else
-            AccessoriesButton.Text = "REMOVE ACCESSORIES: OFF"
-            AccessoriesButton.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
         end
     end
 
@@ -258,20 +216,7 @@ local function BuildControlPanel()
         else
             PerformanceModule:Activate()
         end
-        RefreshButtons()
-    end)
-
-    AccessoriesButton.MouseButton1Click:Connect(function()
-        RemoveAccessoriesEnabled = not RemoveAccessoriesEnabled
-        if RemoveAccessoriesEnabled then
-            SetupAccessoryRemoval()
-        else
-            if accessoriesConnection then
-                accessoriesConnection:Disconnect()
-                accessoriesConnection = nil
-            end
-        end
-        RefreshButtons()
+        RefreshButton()
     end)
 
     -- Сохранение позиции при перемещении
@@ -282,7 +227,7 @@ local function BuildControlPanel()
     end)
 
     ImplementDragging(Panel)
-    RefreshButtons()
+    RefreshButton()
     return MainUI
 end
 
@@ -298,17 +243,20 @@ function FPSDevouverModule:Toggle(state)
             FPSDevouverModule.UI.Enabled = true
         end
         FPSDevouverModule.Enabled = true
+        
+        -- Автоматически запускаем удаление аксессуаров при включении FPS Devouver
+        accessoryRemovalEnabled = true
+        StartAccessoryRemoval()
     else
         if FPSDevouverModule.UI then
             FPSDevouverModule.UI.Enabled = false
         end
         PerformanceModule:Deactivate()
-        RemoveAccessoriesEnabled = false
-        if accessoriesConnection then
-            accessoriesConnection:Disconnect()
-            accessoriesConnection = nil
-        end
         FPSDevouverModule.Enabled = false
+        
+        -- Останавливаем удаление аксессуаров при выключении FPS Devouver
+        accessoryRemovalEnabled = false
+        StopAccessoryRemoval()
     end
 end
 
@@ -320,6 +268,7 @@ end
 User:GetPropertyChangedSignal('Parent'):Connect(function()
     if User.Parent == nil then
         PerformanceModule:Deactivate()
+        StopAccessoryRemoval()
     end
 end)
 
