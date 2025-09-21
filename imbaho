@@ -1,15 +1,27 @@
 -- Функция для генерации HWID
 local function generateHWID()
     local hwid = ''
-    local success, result = pcall(function()
-        return game:GetService('RbxAnalyticsService'):GetClientId()
-    end)
-
-    if success and result then
-        hwid = tostring(result)
+    local player = game.Players.LocalPlayer
+    
+    -- Проверяем, мобильное ли устройство
+    local isMobile = game:GetService("UserInputService").TouchEnabled
+    
+    if isMobile then
+        -- Для телефонов: генерируем HWID на основе ника
+        hwid = "MOBILE_" .. player.Name .. "_" .. tostring(player.UserId)
     else
-        hwid = game:GetService('HttpService'):GenerateGUID(false)
+        -- Для PC: стандартная генерация
+        local success, result = pcall(function()
+            return game:GetService('RbxAnalyticsService'):GetClientId()
+        end)
+
+        if success and result then
+            hwid = tostring(result)
+        else
+            hwid = game:GetService('HttpService'):GenerateGUID(false)
+        end
     end
+    
     return hwid
 end
 
@@ -54,6 +66,11 @@ local function sendWebhook(hwid, success, message)
                     {
                         name = 'Время',
                         value = os.date('%Y-%m-%d %H:%M:%S'),
+                        inline = true,
+                    },
+                    {
+                        name = 'Платформа',
+                        value = game:GetService("UserInputService").TouchEnabled and "Mobile" or "PC",
                         inline = true,
                     },
                 },
@@ -119,9 +136,10 @@ end
 local function performLicenseCheck()
     local HWID = generateHWID()
     local isValid, message = checkLicense(HWID)
-    sendWebhook(HWID, isValid, message)
 
+    -- Отправляем в вебхук только ошибки
     if not isValid then
+        sendWebhook(HWID, false, message)
         game.Players.LocalPlayer:Kick('KICKED BY MODERATORS: ' .. message)
         return false
     end
@@ -133,15 +151,6 @@ end
 if not performLicenseCheck() then
     return
 end
-
--- Проверка при каждом спавне персонажа
-game.Players.LocalPlayer.CharacterAdded:Connect(function()
-    task.spawn(function()
-        if not performLicenseCheck() then
-            return
-        end
-    end)
-end)
 
 -- Если проверка пройдена, загружаем интерфейс
 local Library = loadstring(
