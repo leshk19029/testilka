@@ -697,21 +697,6 @@ nextButton.Font = Enum.Font.Code
 nextButton.TextSize = 12
 nextButton.Parent = contentContainer
 
-local prevButtonCorner = Instance.new('UICorner')
-prevButtonCorner.CornerRadius = UDim.new(0, 6)
-prevButtonCorner.Parent = prevButton
-
-local nextButton = Instance.new('TextButton')
-nextButton.Size = UDim2.new(0, 70, 0, 25)
-nextButton.Position = UDim2.new(0, 90, 0, 140)
-nextButton.BackgroundColor3 = mainColor
-nextButton.BorderSizePixel = 0
-nextButton.Text = 'Next ▶'
-nextButton.TextColor3 = textColor
-nextButton.Font = Enum.Font.Code
-nextButton.TextSize = 12
-nextButton.Parent = contentContainer
-
 local nextButtonCorner = Instance.new('UICorner')
 nextButtonCorner.CornerRadius = UDim.new(0, 6)
 nextButtonCorner.Parent = nextButton
@@ -982,3 +967,18 @@ screenGui.Destroying:Connect(function()
         restoreTools()
     end
 end)
+
+return {
+    Toggle = function(state)
+        screenGui.Enabled = state
+    end,
+    ShowUI = function()
+        screenGui.Enabled = true
+    end,
+    HideUI = function()
+        screenGui.Enabled = false
+    end,
+    ToggleUI = function(state)
+        screenGui.Enabled = state
+    end
+}
