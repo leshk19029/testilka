@@ -5,14 +5,18 @@ local isRemovingAccessories = true
 local swapConnection = nil
 local removeConnection = nil
 
+-- Ключ для сохранения позиции
+local positionKey = "fpsdevouver_window_position"
+
 function FPSDevouverModule:Initialize()
     if screenGui then return end
 
     local player = game:GetService('Players').LocalPlayer
     local RunService = game:GetService('RunService')
     local UserInputService = game:GetService('UserInputService')
+    local HttpService = game:GetService('HttpService')
 
-    -- Константы (как в оригинальном коде)
+    -- Константы
     local SCALE = 0.7
     local PANEL_WIDTH, PANEL_HEIGHT = math.floor(212 * SCALE), math.floor(90 * SCALE)
     local PANEL_RADIUS = math.floor(13 * SCALE)
@@ -26,16 +30,17 @@ function FPSDevouverModule:Initialize()
     local BTN_ICON_PAD = math.floor(8 * SCALE)
     local BTN_Y0 = math.floor(38 * SCALE)
 
-    -- Задержки как в оригинальном коде
+    -- Задержки
     local SWAP_DELAY = 0.035
 
-    -- Сохранение позиции
-    local positionKey = "fpsdevouver_window_position"
+    -- Загрузка сохранённой позиции
     local savedPosition
-
-    pcall(function()
-        savedPosition = game:GetService("HttpService"):JSONDecode(readfile(positionKey))
-    end)
+    if readfile and isfile(positionKey) then
+        pcall(function()
+            local jsonData = readfile(positionKey)
+            savedPosition = HttpService:JSONDecode(jsonData)
+        end)
+    end
 
     -- Создаём интерфейс
     screenGui = Instance.new('ScreenGui')
@@ -56,7 +61,7 @@ function FPSDevouverModule:Initialize()
             savedPosition.Y.Offset
         )
     else
-        main.Position = UDim2.new(1, -PANEL_WIDTH - 10, 0, 10) -- Правый верхний угол
+        main.Position = UDim2.new(1, -PANEL_WIDTH - 10, 0, 10)
     end
 
     main.BackgroundColor3 = Color3.fromRGB(13, 13, 13)
@@ -78,7 +83,7 @@ function FPSDevouverModule:Initialize()
     title.TextStrokeColor3 = Color3.fromRGB(220, 220, 220)
     title.Parent = main
 
-    -- Функция удаления аксессуаров (как в оригинале)
+    -- Функция удаления аксессуаров
     local function removeAllAccessoriesFromCharacter()
         local character = player.Character
         if not character then return end
@@ -93,7 +98,7 @@ function FPSDevouverModule:Initialize()
         end
     end
 
-    -- Функция свапа биты (как в оригинале)
+    -- Функция свапа биты
     local TOOL_NAME = 'Bat'
     
     local function equipTungBat()
@@ -122,7 +127,7 @@ function FPSDevouverModule:Initialize()
         return false
     end
 
-    -- Управление циклами с оригинальными задержками
+    -- Управление циклами
     local function toggleSwapLoop()
         if isSwapping then
             isSwapping = false
@@ -139,7 +144,6 @@ function FPSDevouverModule:Initialize()
                     return
                 end
                 
-                -- Точная логика как в оригинале: equip -> wait -> unequip -> wait
                 equipTungBat()
                 task.wait(SWAP_DELAY)
                 unequipTungBat()
@@ -160,7 +164,7 @@ function FPSDevouverModule:Initialize()
                 return
             end
             removeAllAccessoriesFromCharacter()
-            task.wait(0.1) -- Реже проверяем
+            task.wait(0.1)
         end)
     end
 
@@ -200,14 +204,16 @@ function FPSDevouverModule:Initialize()
                 frame.Position = newPosition
                 
                 -- Сохраняем позицию
-                savedPosition = {
+                local positionData = {
                     X = {Scale = newPosition.X.Scale, Offset = newPosition.X.Offset},
                     Y = {Scale = newPosition.Y.Scale, Offset = newPosition.Y.Offset}
                 }
                 
-                pcall(function()
-                    writefile(positionKey, game:GetService("HttpService"):JSONEncode(savedPosition))
-                end)
+                if writefile then
+                    pcall(function()
+                        writefile(positionKey, HttpService:JSONEncode(positionData))
+                    end)
+                end
             end
         end)
     end
@@ -275,6 +281,16 @@ function FPSDevouverModule:Toggle(state)
             swapConnection:Disconnect()
             swapConnection = nil
             isSwapping = false
+            
+            -- Обновляем кнопку
+            if screenGui and screenGui:FindFirstChild('FPSDevouverMenu') then
+                local main = screenGui.FPSDevouverMenu
+                local btn = main:FindFirstChildWhichIsA('TextButton')
+                if btn then
+                    btn.Text = 'Start'
+                    btn.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
+                end
+            end
         end
     end
 end
