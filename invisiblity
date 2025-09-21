@@ -1,1 +1,630 @@
+-- Invisibility Steal Module
+local InvisibilityStealModule = {}
 
+local Players = game:GetService('Players')
+local PhysicsService = game:GetService('PhysicsService')
+local RunService = game:GetService('RunService')
+local UserInputService = game:GetService('UserInputService')
+local TweenService = game:GetService('TweenService')
+local HttpService = game:GetService('HttpService')
+local LocalPlayer = Players.LocalPlayer
+
+local Backpack = LocalPlayer:WaitForChild('Backpack')
+local PlayerGui = LocalPlayer:WaitForChild('PlayerGui')
+
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild('Humanoid', 10)
+local HumanoidRootPart = Character:WaitForChild('HumanoidRootPart', 10)
+
+-- Настройки
+local IS_ACTIVE = false
+local BASE_Y_OFFSET = -50
+local CAMERA_SENSITIVITY = 0.4
+local originalPosition = HumanoidRootPart.Position
+local CAMERA_HOLD_TIME = 0.35
+
+-- Константы для UI
+local PANEL_WIDTH = 230
+local PANEL_HEIGHT = 100
+local CORNER_RADIUS = 8
+local BTN_WIDTH = 150
+local BTN_HEIGHT = 40
+local BTN_RADIUS = 6
+local BTN_FONT_SIZE = 14
+
+-- Переменные для сохранения позиции
+local savedPosition = nil
+local positionKey = "InvisibilityStealPosition_" .. LocalPlayer.UserId
+
+-- Переменные для клона и камеры
+local clonePart = nil
+local cameraController = nil
+local originalCameraType = nil
+local originalCameraSubject = nil
+local lastPlayerPosition = HumanoidRootPart.Position
+local cameraOffset = Vector3.new(0, 0, 0)
+local cameraAngle = Vector2.new(0, 0)
+local cameraDistance = 8
+local isRightMouseDown = false
+local lastMousePosition = nil
+
+-- Флаги для отслеживания подключенных событий
+local inputBeganConnection = nil
+local inputEndedConnection = nil
+local inputChangedConnection = nil
+local godModeHealthConnection = nil
+local godModeDiedConnection = nil
+
+-- Переменные для UI
+local screenGui = nil
+local mainFrame = nil
+local mainBtn = nil
+
+-- Загрузка сохраненной позиции
+local function loadSavedPosition()
+    local success, result = pcall(function()
+        if readfile and isfile and isfile(positionKey) then
+            return readfile(positionKey)
+        end
+        return nil
+    end)
+    
+    if success and result then
+        local data = HttpService:JSONDecode(result)
+        savedPosition = UDim2.new(data.X.Scale, data.X.Offset, data.Y.Scale, data.Y.Offset)
+        return true
+    end
+    return false
+end
+
+-- Сохранение позиции
+local function savePosition(position)
+    savedPosition = position
+    pcall(function()
+        if writefile then
+            local data = {
+                X = {Scale = position.X.Scale, Offset = position.X.Offset},
+                Y = {Scale = position.Y.Scale, Offset = position.Y.Offset}
+            }
+            writefile(positionKey, HttpService:JSONEncode(data))
+        end
+    end)
+end
+
+-- Функция для настройки перетаскивания
+local function setupDrag(frame)
+    local dragging = false
+    local dragInput, dragStart, startPos
+
+    local function update(input)
+        local delta = input.Position - dragStart
+        local newPosition = UDim2.new(
+            startPos.X.Scale,
+            startPos.X.Offset + delta.X,
+            startPos.Y.Scale,
+            startPos.Y.Offset + delta.Y
+        )
+        frame.Position = newPosition
+        savePosition(newPosition)
+    end
+
+    frame.InputBegan:Connect(function(input)
+        if
+            input.UserInputType == Enum.UserInputType.MouseButton1
+            or input.UserInputType == Enum.UserInputType.Touch
+        then
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+
+            local connection
+            connection = input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                    connection:Disconnect()
+                end
+            end)
+        end
+    end)
+
+    frame.InputChanged:Connect(function(input)
+        if
+            input.UserInputType == Enum.UserInputType.MouseMovement
+            or input.UserInputType == Enum.UserInputType.Touch
+        then
+            dragInput = input
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            update(input)
+        end
+    end)
+end
+
+-- Загрузка чувствительности из настроек игры
+local function loadCameraSensitivityFromSettings()
+    local UserSettingsService = game:GetService('UserSettings')
+    local GameSettings = nil
+    local ok, err = pcall(function()
+        GameSettings = UserSettingsService:WaitForChild('GameSettings')
+    end)
+    if
+        ok
+        and GameSettings
+        and type(GameSettings.MouseSensitivity) == 'number'
+    then
+        CAMERA_SENSITIVITY = GameSettings.MouseSensitivity
+    end
+
+    if GameSettings then
+        GameSettings.Changed:Connect(function(prop)
+            if prop == 'MouseSensitivity' then
+                local ms = GameSettings.MouseSensitivity
+                if type(ms) == 'number' then
+                    CAMERA_SENSITIVITY = ms
+                end
+            end
+        end)
+    end
+end
+
+-- Функция для создания клона HumanoidRootPart
+local function createClone()
+    if clonePart then
+        clonePart:Destroy()
+        clonePart = nil
+    end
+
+    clonePart = Instance.new('Part')
+    clonePart.Name = 'InvisibilityClone'
+    clonePart.Size = Vector3.new(2, 2, 1)
+    clonePart.Shape = Enum.PartType.Block
+    clonePart.Color = Color3.fromRGB(255, 0, 0)
+    clonePart.Material = Enum.Material.Neon
+    clonePart.Transparency = 0.5
+    clonePart.CanCollide = false
+    clonePart.Anchored = true
+    clonePart.CastShadow = false
+
+    clonePart.Position = Vector3.new(
+        lastPlayerPosition.X,
+        lastPlayerPosition.Y,
+        lastPlayerPosition.Z
+    )
+
+    clonePart.Parent = workspace
+end
+
+-- Функция для обработки ввода мыши для камеры
+local function setupCameraInput()
+    if inputBeganConnection then
+        inputBeganConnection:Disconnect()
+        inputBeganConnection = nil
+    end
+    if inputEndedConnection then
+        inputEndedConnection:Disconnect()
+        inputEndedConnection = nil
+    end
+    if inputChangedConnection then
+        inputChangedConnection:Disconnect()
+        inputChangedConnection = nil
+    end
+
+    inputBeganConnection = UserInputService.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton2 then
+            isRightMouseDown = true
+            lastMousePosition = UserInputService:GetMouseLocation()
+            if IS_ACTIVE and clonePart then
+                UserInputService.MouseBehavior =
+                    Enum.MouseBehavior.LockCurrentPosition
+            end
+        end
+    end)
+
+    inputEndedConnection = UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton2 then
+            isRightMouseDown = false
+            lastMousePosition = nil
+            UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+        end
+    end)
+
+    inputChangedConnection = UserInputService.InputChanged:Connect(
+        function(input)
+            if
+                input.UserInputType == Enum.UserInputType.MouseMovement
+                and isRightMouseDown
+                and IS_ACTIVE
+                and clonePart
+            then
+                local delta = input.Delta
+                cameraAngle = cameraAngle
+                    + Vector2.new(
+                        delta.Y * CAMERA_SENSITIVITY * 0.01,
+                        -delta.X * CAMERA_SENSITIVITY * 0.01
+                    )
+                cameraAngle = Vector2.new(
+                    math.clamp(cameraAngle.X, -math.rad(80), math.rad(80)),
+                    cameraAngle.Y
+                )
+            end
+
+            if input.UserInputType == Enum.UserInputType.MouseWheel then
+                cameraDistance =
+                    math.clamp(cameraDistance - input.Position.Z * 2, 2, 20)
+            end
+        end
+    )
+end
+
+-- Функция для привязки камеры к клону
+local function attachCameraToClone()
+    if not clonePart then
+        return
+    end
+
+    originalCameraType = workspace.CurrentCamera.CameraType
+    originalCameraSubject = workspace.CurrentCamera.CameraSubject
+
+    workspace.CurrentCamera.CameraType = Enum.CameraType.Scriptable
+
+    setupCameraInput()
+
+    if cameraController then
+        cameraController:Disconnect()
+        cameraController = nil
+    end
+
+    cameraController = RunService.RenderStepped:Connect(function()
+        if clonePart and clonePart.Parent then
+            local cameraPos = clonePart.Position
+                + Vector3.new(
+                    math.sin(cameraAngle.Y)
+                        * math.cos(cameraAngle.X)
+                        * cameraDistance,
+                    math.sin(cameraAngle.X) * cameraDistance + 2,
+                    math.cos(cameraAngle.Y)
+                        * math.cos(cameraAngle.X)
+                        * cameraDistance
+                )
+            workspace.CurrentCamera.CFrame =
+                CFrame.new(cameraPos, clonePart.Position + Vector3.new(0, 2, 0))
+        end
+    end)
+end
+
+-- Функция для восстановления оригинальной камеры
+local function restoreOriginalCamera()
+    if cameraController then
+        cameraController:Disconnect()
+        cameraController = nil
+    end
+
+    if inputBeganConnection then
+        inputBeganConnection:Disconnect()
+        inputBeganConnection = nil
+    end
+    if inputEndedConnection then
+        inputEndedConnection:Disconnect()
+        inputEndedConnection = nil
+    end
+    if inputChangedConnection then
+        inputChangedConnection:Disconnect()
+        inputChangedConnection = nil
+    end
+
+    if workspace.CurrentCamera then
+        workspace.CurrentCamera.CameraType = originalCameraType
+            or Enum.CameraType.Custom
+        if originalCameraSubject and originalCameraSubject.Parent then
+            workspace.CurrentCamera.CameraSubject = originalCameraSubject
+        else
+            workspace.CurrentCamera.CameraSubject = Humanoid
+        end
+    end
+
+    UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+    isRightMouseDown = false
+    lastMousePosition = nil
+end
+
+-- Функция для обновления позиции клона
+local function updateClonePosition()
+    if not clonePart or not HumanoidRootPart or not HumanoidRootPart.Parent then
+        return
+    end
+
+    local currentPos = HumanoidRootPart.Position
+    lastPlayerPosition = currentPos
+    clonePart.Position =
+        Vector3.new(currentPos.X, clonePart.Position.Y, currentPos.Z)
+
+    local lookVector = HumanoidRootPart.CFrame.LookVector
+    lookVector = Vector3.new(lookVector.X, 0, lookVector.Z)
+    if lookVector.Magnitude > 0 then
+        clonePart.CFrame =
+            CFrame.new(clonePart.Position, clonePart.Position + lookVector)
+    end
+end
+
+-- Функция для удаления клона
+local function removeClone()
+    if clonePart then
+        clonePart:Destroy()
+        clonePart = nil
+    end
+end
+
+-- Функция для получения позиции телепортации
+local function getTeleportPosition(currentPosition)
+    local additionalOffset = 0
+    if currentPosition.Y > 0 then
+        additionalOffset = -currentPosition.Y
+    end
+    local totalYOffset = BASE_Y_OFFSET + additionalOffset
+    local x = currentPosition.X
+    local z = currentPosition.Z
+    local y = currentPosition.Y + totalYOffset
+    return Vector3.new(x, y, z)
+end
+
+-- Функция для телепортации
+local function teleportToPosition()
+    if not HumanoidRootPart or not HumanoidRootPart.Parent then
+        return
+    end
+
+    lastPlayerPosition = HumanoidRootPart.Position
+    local currentPosition = HumanoidRootPart.Position
+    local teleportPosition = getTeleportPosition(currentPosition)
+
+    local success, err = pcall(function()
+        HumanoidRootPart.CFrame = CFrame.new(teleportPosition)
+        HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
+        HumanoidRootPart.RotVelocity = Vector3.new(0, 0, 0)
+        originalPosition = teleportPosition
+    end)
+end
+
+-- Функция для возврата персонажа
+local function returnPlayerUp()
+    if not HumanoidRootPart or not HumanoidRootPart.Parent then
+        return
+    end
+
+    local currentPosition = HumanoidRootPart.Position
+    local returnPosition =
+        Vector3.new(currentPosition.X, currentPosition.Y + 2, currentPosition.Z)
+
+    local success, err = pcall(function()
+        HumanoidRootPart.CFrame = CFrame.new(returnPosition)
+        HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
+        HumanoidRootPart.RotVelocity = Vector3.new(0, 0, 0)
+    end)
+end
+
+-- Функция для активации God Mode
+local function enableGodMode()
+    if not Humanoid or not Humanoid.Parent then
+        return
+    end
+
+    Humanoid.MaxHealth = math.huge
+    Humanoid.Health = math.huge
+
+    if godModeHealthConnection then
+        godModeHealthConnection:Disconnect()
+        godModeHealthConnection = nil
+    end
+    if godModeDiedConnection then
+        godModeDiedConnection:Disconnect()
+        godModeDiedConnection = nil
+    end
+
+    godModeHealthConnection = Humanoid:GetPropertyChangedSignal('Health')
+        :Connect(function()
+            Humanoid.Health = math.huge
+        end)
+
+    godModeDiedConnection = Humanoid.Died:Connect(function()
+        if Humanoid.Parent then
+            Humanoid:Destroy()
+            Character:BreakJoints()
+        end
+    end)
+end
+
+-- Функция для деактивации God Mode
+local function disableGodMode()
+    if godModeHealthConnection then
+        godModeHealthConnection:Disconnect()
+        godModeHealthConnection = nil
+    end
+    if godModeDiedConnection then
+        godModeDiedConnection:Disconnect()
+        godModeDiedConnection = nil
+    end
+
+    if Humanoid and Humanoid.Parent then
+        Humanoid.MaxHealth = 100
+        Humanoid.Health = 100
+    end
+end
+
+-- Функция для переключения состояния
+local function setActive(state)
+    IS_ACTIVE = state
+
+    if IS_ACTIVE then
+        if HumanoidRootPart and HumanoidRootPart.Parent then
+            teleportToPosition()
+            createClone()
+            attachCameraToClone()
+            enableGodMode()
+        else
+            IS_ACTIVE = false
+        end
+    else
+        returnPlayerUp()
+        disableGodMode()
+        -- Задержка восстановления камеры
+        task.delay(CAMERA_HOLD_TIME, function()
+            if not IS_ACTIVE then
+                restoreOriginalCamera()
+                removeClone()
+            end
+        end)
+    end
+end
+
+-- Создание UI
+local function createUI()
+    if screenGui then
+        screenGui:Destroy()
+    end
+
+    screenGui = Instance.new('ScreenGui')
+    screenGui.Name = 'InvisibilityMenu'
+    screenGui.Parent = PlayerGui
+    screenGui.ResetOnSpawn = false
+    screenGui.Enabled = true
+    screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    screenGui.IgnoreGuiInset = true
+
+    mainFrame = Instance.new('Frame')
+    mainFrame.Size = UDim2.new(0, PANEL_WIDTH, 0, PANEL_HEIGHT)
+    
+    -- Устанавливаем сохраненную позицию или позицию по умолчанию
+    if savedPosition then
+        mainFrame.Position = savedPosition
+    else
+        mainFrame.Position = UDim2.new(0, 10, 0, 10)
+    end
+    
+    mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    mainFrame.BackgroundTransparency = 0.15
+    mainFrame.BorderSizePixel = 0
+    mainFrame.ZIndex = 10
+    mainFrame.Active = true
+    mainFrame.Parent = screenGui
+
+    Instance.new('UICorner', mainFrame).CornerRadius =
+        UDim.new(0, CORNER_RADIUS)
+
+    local title = Instance.new('TextLabel')
+    title.Size = UDim2.new(1, 0, 0, 28)
+    title.Position = UDim2.new(0, 0, 0, 0)
+    title.BackgroundTransparency = 1
+    title.Text = 'Invisibility'
+    title.Font = Enum.Font.SourceSansBold
+    title.TextScaled = true
+    title.TextColor3 = Color3.new(1, 1, 1)
+    title.ZIndex = 11
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Parent = mainFrame
+
+    mainBtn = Instance.new('TextButton')
+    mainBtn.Size = UDim2.new(0, BTN_WIDTH, 0, BTN_HEIGHT)
+    mainBtn.Position = UDim2.new(0.5, -BTN_WIDTH / 2, 0, 50)
+    mainBtn.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
+    mainBtn.Font = Enum.Font.SourceSansBold
+    mainBtn.TextSize = BTN_FONT_SIZE
+    mainBtn.TextColor3 = Color3.new(1, 1, 1)
+    mainBtn.TextScaled = true
+    mainBtn.Text = IS_ACTIVE and 'ON' or 'OFF'
+    mainBtn.ZIndex = 11
+    mainBtn.Active = true
+    mainBtn.BorderSizePixel = 0
+    mainBtn.Parent = mainFrame
+
+    Instance.new('UICorner', mainBtn).CornerRadius = UDim.new(0, BTN_RADIUS)
+
+    mainBtn.MouseButton1Click:Connect(function()
+        setActive(not IS_ACTIVE)
+        mainBtn.Text = IS_ACTIVE and 'ON' or 'OFF'
+    end)
+
+    setupDrag(mainFrame)
+end
+
+-- Методы модуля
+function InvisibilityStealModule:Enable()
+    if not IS_ACTIVE then
+        loadCameraSensitivityFromSettings()
+        loadSavedPosition()
+        createUI()
+        setActive(true)
+        if mainBtn then
+            mainBtn.Text = 'ON'
+        end
+    end
+end
+
+function InvisibilityStealModule:Disable()
+    if IS_ACTIVE then
+        setActive(false)
+        if mainBtn then
+            mainBtn.Text = 'OFF'
+        end
+        if screenGui then
+            screenGui:Destroy()
+            screenGui = nil
+        end
+    end
+end
+
+function InvisibilityStealModule:Toggle(state)
+    if state then
+        self:Enable()
+    else
+        self:Disable()
+    end
+end
+
+-- Фиксация позиции
+RunService.Heartbeat:Connect(function()
+    if IS_ACTIVE and HumanoidRootPart and HumanoidRootPart.Parent then
+        HumanoidRootPart.CFrame = CFrame.new(originalPosition)
+        HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
+        HumanoidRootPart.RotVelocity = Vector3.new(0, 0, 0)
+        updateClonePosition()
+    end
+end)
+
+-- Обработчик респауна
+local function onCharacterAdded(newCharacter)
+    Character = newCharacter
+    task.wait(1)
+    Humanoid = Character:WaitForChild('Humanoid', 10)
+    HumanoidRootPart = Character:WaitForChild('HumanoidRootPart', 10)
+
+    if IS_ACTIVE then
+        task.delay(0.5, function()
+            teleportToPosition()
+            createClone()
+            attachCameraToClone()
+            enableGodMode()
+        end)
+    else
+        removeClone()
+        disableGodMode()
+        restoreOriginalCamera()
+    end
+end
+
+LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
+
+-- Очистка при выходе
+game:GetService('Players').PlayerRemoving:Connect(function(player)
+    if player == LocalPlayer then
+        removeClone()
+        disableGodMode()
+        if screenGui then
+            screenGui:Destroy()
+        end
+    end
+end)
+
+return InvisibilityStealModule
