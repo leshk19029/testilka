@@ -1,128 +1,179 @@
-local Player = game:GetService("Players").LocalPlayer
-local UIS = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
-local CoreGui = game:GetService("CoreGui")
+local FloatModule = {}
+local Player = game:GetService('Players').LocalPlayer
+local UIS = game:GetService('UserInputService')
+local RunService = game:GetService('RunService')
+local CoreGui = game:GetService('CoreGui')
 
--- Settings
+-- Настройки
 local FLY_SPEED = 30
-local FALL_SPEED = 3
+local FALL_SPEED = 0.1
 local WALK_SPEED = 16
 local MAX_HEIGHT_GAIN = 21.8
 local isFlying = false
 local heightLimitEnabled = false
 local currentHeightGain = 0
-local scriptActive = true
 local flightEnabled = false
 
--- Create interface
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "FlightControl"
+-- Сохранение позиции
+local positionKey = "float_window_position"
+local savedPosition
+
+-- Пытаемся загрузить сохранённую позицию
+pcall(function()
+    savedPosition = game:GetService("HttpService"):JSONDecode(readfile(positionKey))
+end)
+
+-- Создаём интерфейс
+local screenGui = Instance.new('ScreenGui')
+screenGui.Name = 'FlightControl'
 screenGui.Parent = CoreGui
 
-local frame = Instance.new("Frame")
+local frame = Instance.new('Frame')
 frame.Size = UDim2.new(0, 200, 0, 100)
-frame.Position = UDim2.new(0.5, -100, 0.2, 0)
+
+-- Устанавливаем сохранённую позицию или позицию по умолчанию
+if savedPosition then
+    frame.Position = UDim2.new(
+        savedPosition.X.Scale,
+        savedPosition.X.Offset,
+        savedPosition.Y.Scale,
+        savedPosition.Y.Offset
+    )
+else
+    frame.Position = UDim2.new(0.5, -100, 0.2, 0)
+end
+
 frame.AnchorPoint = Vector2.new(0.5, 0)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 frame.BackgroundTransparency = 0.3
 frame.BorderSizePixel = 0
 frame.Active = true
-frame.Draggable = true
+frame.Draggable = false
 
-local uiCorner = Instance.new("UICorner")
+local uiCorner = Instance.new('UICorner')
 uiCorner.CornerRadius = UDim.new(0, 8)
 uiCorner.Parent = frame
 
--- Flight toggle
-local flightToggle = Instance.new("TextButton")
+-- Переключатель полёта
+local flightToggle = Instance.new('TextButton')
 flightToggle.Size = UDim2.new(0, 80, 0, 30)
 flightToggle.Position = UDim2.new(0.1, 0, 0.1, 0)
 flightToggle.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-flightToggle.Text = "Flight: OFF"
+flightToggle.Text = 'Flight: OFF'
 flightToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
 flightToggle.Font = Enum.Font.GothamBold
 flightToggle.TextSize = 12
 
--- Height limit toggle
-local toggle = Instance.new("TextButton")
-toggle.Size = UDim2.new(0, 80, 0, 30)
-toggle.Position = UDim2.new(0.1, 0, 0.5, 0)
-toggle.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-toggle.Text = "Limit: OFF"
-toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-toggle.Font = Enum.Font.GothamBold
-toggle.TextSize = 12
+-- Переключатель лимита высоты
+local heightToggle = Instance.new('TextButton')
+heightToggle.Size = UDim2.new(0, 80, 0, 30)
+heightToggle.Position = UDim2.new(0.1, 0, 0.5, 0)
+heightToggle.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+heightToggle.Text = 'Limit: OFF'
+heightToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+heightToggle.Font = Enum.Font.GothamBold
+heightToggle.TextSize = 12
 
 frame.Parent = screenGui
 flightToggle.Parent = frame
-toggle.Parent = frame
-uiCorner.Parent = frame
+heightToggle.Parent = frame
 
--- Reset velocity function
+-- Функция перетаскивания с сохранением позиции
+local function setupDrag(frame)
+    local dragging = false
+    local dragStart, startPos
+
+    local function onInputBegan(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+        end
+    end
+
+    local function onInputChanged(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = input.Position - dragStart
+            local newPosition = UDim2.new(
+                startPos.X.Scale,
+                startPos.X.Offset + delta.X,
+                startPos.Y.Scale,
+                startPos.Y.Offset + delta.Y
+            )
+            frame.Position = newPosition
+            
+            -- Сохраняем позицию
+            savedPosition = {
+                X = {Scale = newPosition.X.Scale, Offset = newPosition.X.Offset},
+                Y = {Scale = newPosition.Y.Scale, Offset = newPosition.Y.Offset}
+            }
+            
+            -- Сохраняем в файл
+            pcall(function()
+                writefile(positionKey, game:GetService("HttpService"):JSONEncode(savedPosition))
+            end)
+        end
+    end
+
+    local function onInputEnded(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end
+
+    frame.InputBegan:Connect(onInputBegan)
+    frame.InputChanged:Connect(onInputChanged)
+    UIS.InputChanged:Connect(onInputChanged)
+    UIS.InputEnded:Connect(onInputEnded)
+end
+
+setupDrag(frame)
+
+-- Функции полёта
 local function resetVelocity()
-    if Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
+    if Player.Character and Player.Character:FindFirstChild('HumanoidRootPart') then
         Player.Character.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
     end
 end
 
--- Set walk speed function
 local function setWalkSpeed()
-    if Player.Character and Player.Character:FindFirstChild("Humanoid") then
+    if Player.Character and Player.Character:FindFirstChild('Humanoid') then
         Player.Character.Humanoid.WalkSpeed = WALK_SPEED
     end
 end
 
--- Disable script completely
-local function disableScript()
-    scriptActive = false
-    resetVelocity()
-    screenGui:Destroy()
-end
-
--- F2 handler
-UIS.InputBegan:Connect(function(input)
-    if input.KeyCode == Enum.KeyCode.F2 then
-        disableScript()
-    end
-end)
-
--- Flight toggle handler
 flightToggle.MouseButton1Click:Connect(function()
     flightEnabled = not flightEnabled
     if flightEnabled then
-        flightToggle.Text = "Flight: ON"
+        flightToggle.Text = 'Flight: ON'
         flightToggle.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
         setWalkSpeed()
     else
-        flightToggle.Text = "Flight: OFF"
+        flightToggle.Text = 'Flight: OFF'
         flightToggle.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
         resetVelocity()
+        isFlying = false
     end
 end)
 
--- Height limit toggle handler
-toggle.MouseButton1Click:Connect(function()
+heightToggle.MouseButton1Click:Connect(function()
     heightLimitEnabled = not heightLimitEnabled
     if heightLimitEnabled then
-        toggle.Text = "Limit: ON"
-        toggle.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+        heightToggle.Text = 'Limit: ON'
+        heightToggle.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
     else
-        toggle.Text = "Limit: OFF"
-        toggle.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        heightToggle.Text = 'Limit: OFF'
+        heightToggle.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
     end
 end)
 
--- Main flight function
 local function fly()
-    if not scriptActive or not flightEnabled then 
-        return 
-    end
-    
+    if not flightEnabled then return end
     if not Player.Character then return end
-    
-    local root = Player.Character:FindFirstChild("HumanoidRootPart")
+
+    local root = Player.Character:FindFirstChild('HumanoidRootPart')
     if not root then return end
-    
+
     if isFlying then
         if heightLimitEnabled then
             if currentHeightGain < MAX_HEIGHT_GAIN then
@@ -137,34 +188,49 @@ local function fly()
             root.Velocity = Vector3.new(root.Velocity.X, FLY_SPEED, root.Velocity.Z)
         end
     else
-        -- Slow descent
         root.Velocity = Vector3.new(root.Velocity.X, -FALL_SPEED, root.Velocity.Z)
         currentHeightGain = 0
     end
 end
 
--- Space press handler
 UIS.InputBegan:Connect(function(input)
-    if not scriptActive or not flightEnabled then return end
+    if not flightEnabled then return end
     if input.KeyCode == Enum.KeyCode.Space then
         isFlying = true
     end
 end)
 
--- Space release handler
 UIS.InputEnded:Connect(function(input)
-    if not scriptActive or not flightEnabled then return end
+    if not flightEnabled then return end
     if input.KeyCode == Enum.KeyCode.Space then
         isFlying = false
     end
 end)
 
--- Main loop
 RunService.Heartbeat:Connect(function()
     if flightEnabled then
         fly()
     end
 end)
 
--- Set initial walk speed
-setWalkSpeed()
+-- Методы модуля
+function FloatModule:Toggle(state)
+    screenGui.Enabled = state
+    flightEnabled = state
+    if not state then
+        resetVelocity()
+        isFlying = false
+        flightToggle.Text = 'Flight: OFF'
+        flightToggle.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+    else
+        setWalkSpeed()
+        flightToggle.Text = 'Flight: ON'
+        flightToggle.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+    end
+end
+
+function FloatModule:SetEnabled(state)
+    self:Toggle(state)
+end
+
+return FloatModule
