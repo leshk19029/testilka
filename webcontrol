@@ -557,12 +557,13 @@ screenGui.Name = 'ControlPlayerMenu'
 screenGui.Parent = player:WaitForChild('PlayerGui')
 screenGui.ResetOnSpawn = false
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.Enabled = false -- СКРЫВАЕМ GUI ПО УМОЛЧАНИЮ
 
 -- Основной контейнер с фоном
 local mainContainer = Instance.new('Frame')
 mainContainer.Name = 'MainContainer'
 mainContainer.Size = UDim2.new(0, 170, 0, 230)
-mainContainer.Position = UDim2.new(0, 10, 0, 20)
+mainContainer.Position = UDim2.new(0, 10, 0, 25)
 mainContainer.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 mainContainer.BackgroundTransparency = 0.3
 mainContainer.BorderSizePixel = 0
@@ -826,7 +827,7 @@ spawn(function()
     end
 end)
 
--- Обработчики кнопок навигации
+-- Обработчики кнопки навигации
 if prevButton then
     prevButton.MouseButton1Click:Connect(function()
         if #playerList > 0 then
@@ -936,9 +937,22 @@ if controlButton then
     end)
 end
 
--- Бинды клавиш (только для ПК)
+-- ========== ОБРАБОТЧИК КЛАВИШИ CONTROL ==========
+local controlKeyPressed = false
+
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then
+        return
+    end
+
+    -- Обработка клавиши Control для показа/скрытия GUI
+    if input.KeyCode == Enum.KeyCode.LeftControl or input.KeyCode == Enum.KeyCode.RightControl then
+        controlKeyPressed = true
+        screenGui.Enabled = not screenGui.Enabled -- Переключаем видимость GUI
+    end
+
+    -- Остальные бинды клавиш (только если GUI видимо)
+    if not screenGui.Enabled then
         return
     end
 
@@ -948,6 +962,12 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 
     if input.KeyCode == Enum.KeyCode.C then
         executeAntihitFriend()
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.LeftControl or input.KeyCode == Enum.KeyCode.RightControl then
+        controlKeyPressed = false
     end
 end)
 
